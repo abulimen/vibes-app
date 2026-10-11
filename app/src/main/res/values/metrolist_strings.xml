@@ -4,6 +4,7 @@
     <string name="remote_history">Remote</string>
 
     <string name="charts">Charts</string>
+    <string name="hotlist">Hotlist</string>
     <string name="mixes">Mixes</string>
     <string name="back_button_desc">Back</string>
     <string name="album_cover_desc">Album cover</string>
@@ -375,12 +376,12 @@
     <string name="check_for_updates">Automatically check for updates</string>
     <string name="update_notifications">Enable update notifications</string>
     <string name="update_available_title">New update available</string>
-    <string name="update_available_message">Metrolist %s is ready to download.</string>
+    <string name="update_available_message">Vibes %s is ready to download.</string>
     <string name="update_action">Update</string>
     <string name="update_channel_name">App updates</string>
     <string name="update_channel_desc">Notifications about new app versions</string>
-    <string name="kmp_upgrade_title">Metrolist KMP %s is available</string>
-    <string name="kmp_upgrade_warning">Metrolist KMP is still in development. You may encounter bugs or incomplete features.</string>
+    <string name="kmp_upgrade_title">Vibes KMP %s is available</string>
+    <string name="kmp_upgrade_warning">Vibes KMP is still in development. You may encounter bugs or incomplete features.</string>
     <string name="kmp_upgrade_action">Try KMP</string>
     <string name="kmp_upgrade_later">Not now</string>
 
@@ -413,7 +414,7 @@
     <string name="enable_scrobbling">Enable scrobbling</string>
     <string name="lastfm_now_playing">Send Now Playing status</string>
     <string name="last_fm_send_likes">Sync Loved and Unloved</string>
-    <string name="last_fm_send_likes_description">Love or unlove songs in Last.fm when you like or unlike them in Metrolist</string>
+    <string name="last_fm_send_likes_description">Love or unlove songs in Last.fm when you like or unlike them in Vibes</string>
     <string name="logging_in">Logging in…</string>
 
     <string name="scrobbling_configuration">Scrobbling configuration</string>
@@ -468,10 +469,10 @@
     <string name="wrapped_total_artists_subtitle">unique artists!</string>
     <string name="wrapped_total_songs_title">You\'ve listened to</string>
     <string name="wrapped_total_songs_subtitle">unique songs!</string>
-    <string name="wrapped_intro_title">METROLIST</string>
+    <string name="wrapped_intro_title">VIBES</string>
     <string name="wrapped_intro_subtitle">it\'s time to see what you\'ve been listening to all this year…</string>
     <string name="wrapped_intro_button">let\'s go!</string>
-    <string name="wrapped_logo_content_description">Metrolist Logo</string>
+    <string name="wrapped_logo_content_description">Vibes Logo</string>
     <string name="wrapped_year">2025</string>
     <string name="wrapped_ready_title">YOUR WRAPPED IS READY!</string>
     <string name="wrapped_ready_subtitle">Time to see what you loved all this year…</string>
@@ -544,14 +545,14 @@
     <!-- Widget strings -->
     <string name="album_art">Album art</string>
     <string name="no_song_playing">No song playing</string>
-    <string name="tap_to_open">Tap to open Metrolist</string>
+    <string name="tap_to_open">Tap to open Vibes</string>
     <string name="previous">Previous</string>
     <string name="play_pause">Play/Pause</string>
     <string name="player_pause">Pause</string>
     <string name="next">Next</string>
     <string name="like">Like</string>
     <string name="not_playing">No song playing</string>
-    <string name="tap_to_play">Tap to open Metrolist</string>
+    <string name="tap_to_play">Tap to open Vibes</string>
     <string name="widget_description">Music player widget with playback controls</string>
     <string name="turntable_widget_description">Circular music widget with play and like controls</string>
     <string name="widget_music_player">Music Player</string>
@@ -714,7 +715,7 @@
     <string name="crash_description">An unexpected error occurred. Please share the crash report to help us fix the issue</string>
     <string name="crash_share_logs">Share logs</string>
     <string name="crash_share_title">Share crash report</string>
-    <string name="crash_report_subject">Metrolist crash report</string>
+    <string name="crash_report_subject">Vibes crash report</string>
     <string name="crash_close">Close</string>
     <string name="crash_no_log">No crash log available</string>
 
@@ -766,7 +767,7 @@
     <string name="clear_recognition_history_confirm">Are you sure you want to clear all recognition history?</string>
     <string name="delete_from_history">Delete from history</string>
     <string name="re_listen">Re-listen</string>
-    <string name="play_on_app">Play on Metrolist</string>
+    <string name="play_on_app">Play on Vibes</string>
     <string name="qs_tile_music_recognizer">Recognize music</string>
     <string name="recognition_notification_channel_name">Music recognition</string>
     <string name="recognition_notification_channel_desc">Shows a notification while identifying a song from quick settings</string>
@@ -774,7 +775,7 @@
     <string name="recognition_notification_processing">Identifying…</string>
     <string name="recognition_notification_no_match">No match found</string>
     <string name="recognition_notification_failed">Recognition failed</string>
-    <string name="listen_on_metrolist">Listen on Metrolist</string>
+    <string name="listen_on_metrolist">Listen on Vibes</string>
 
     <!-- CSV Import Strings -->
     <string name="map_csv_columns">Map CSV columns</string>
@@ -790,7 +791,7 @@
     <string name="column_label">Column %d</string>
 
     <string name="discord_connect_description">Sign in with Discord to share what you\'re listening to</string>
-    <string name="discord_information_warning">Metrolist uses Discord\'s public OAuth2 and Gateway APIs to share what you\'re listening to. Authorization happens through a local browser session that closes itself after capturing the code — nothing is sent to third-party servers. Your token is stored on this device in encrypted preferences and is never shared. Metrolist connects directly to wss://gateway.discord.gg to publish your activity, and only requests the minimum scope required (sdk.social_layer_presence).</string>
+    <string name="discord_information_warning">Vibes uses Discord\'s public OAuth2 and Gateway APIs to share what you\'re listening to. Authorization happens through a local browser session that closes itself after capturing the code — nothing is sent to third-party servers. Your token is stored on this device in encrypted preferences and is never shared. Vibes connects directly to wss://gateway.discord.gg to publish your activity, and only requests the minimum scope required (sdk.social_layer_presence).</string>
     <string name="discord_status_connected">Connected</string>
     <string name="discord_status_authorizing">Authorizing…</string>
     <string name="discord_status_authorized">Authorized</string>
@@ -858,8 +859,23 @@
     <string name="credits_telegram">Telegram channel</string>
     <string name="credits_view_repo">View repository</string>
     <string name="buy_mo_a_coffee">Buy me a coffee!</string>
+    <string name="buy_me_a_coffee">Buy me a Coffee</string>
+    <string name="fork_of_metrolist">Vibes is a fork of Metrolist</string>
+    <string name="fork_of_metrolist_description">Credit to the original Metrolist open-source project and its contributors</string>
     <string name="community_and_info">Community &amp; Info</string>
-    <string name="metrolist">METROLIST</string>
+    <string name="metrolist">VIBES</string>
+    <string name="login_with_youtube_music">Log in with YouTube Music</string>
+    <string name="import_from_spotify">Import from Spotify</string>
+    <string name="view_onboarding">View Onboarding</string>
+    <string name="spotify_import_title">Import from Spotify</string>
+    <string name="spotify_import_subtitle">Transfer your playlists &amp; favorites into Vibes in minutes</string>
+    <string name="spotify_import_step1_title">1. Log in to YouTube Music</string>
+    <string name="spotify_import_step1_desc">Ensure your YouTube Music account is connected right here in Vibes so all imported tracks sync directly to your library.</string>
+    <string name="spotify_import_step2_title">2. Transfer via TuneMyMusic</string>
+    <string name="spotify_import_step2_desc">Visit TuneMyMusic in your browser, connect your Spotify and YouTube Music accounts, and transfer your playlists.</string>
+    <string name="spotify_import_step2_btn">Open TuneMyMusic Transfer</string>
+    <string name="spotify_import_step3_title">3. Return &amp; Enjoy Your Music</string>
+    <string name="spotify_import_step3_desc">When the transfer completes, return to Vibes and refresh your library. All your Spotify playlists and tracks are ready to play!</string>
     <string name="wanna_play_favorite_song">Want to play their favorite song?</string>
     <string name="yeah">Yeah!</string>
     <string name="stands_with_palestine">This project stands with Palestine 🇵🇸</string>

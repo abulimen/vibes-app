@@ -6,7 +6,10 @@
 package com.metrolist.music.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +25,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.SpotifyGreen
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -93,6 +100,10 @@ import com.metrolist.music.ui.menu.SongMenu
 import com.metrolist.music.ui.menu.YouTubeAlbumMenu
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.resize
+import com.metrolist.music.LocalArtistNameAliases
+import com.metrolist.music.utils.ArtistNameAliases
+import com.metrolist.music.utils.joinByBullet
+import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AlbumViewModel
@@ -120,6 +131,8 @@ fun AlbumScreen(
     val playlistId by viewModel.playlistId.collectAsStateWithLifecycle()
     val albumWithSongs by viewModel.albumWithSongs.collectAsStateWithLifecycle()
     val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
+    val songPlays by viewModel.songPlays.collectAsStateWithLifecycle()
+    val artistNameAliases = LocalArtistNameAliases.current
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(key = HideVideoSongsKey, defaultValue = false)
 
@@ -195,77 +208,57 @@ fun AlbumScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
                 ) {
-                    // Album Thumbnail - Large centered with shadow
-                    Surface(
-                        modifier =
-                            Modifier
-                                .size(240.dp)
-                                .shadow(
-                                    elevation = 24.dp,
-                                    shape = RoundedCornerShape(3.dp),
-                                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                ),
-                        shape = RoundedCornerShape(3.dp),
-                    ) {
-                        AsyncImage(
-                            model = albumWithSongs.album.thumbnailUrl?.resize(1080, 1080),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Album Name
-                    Text(
-                        text = albumWithSongs.album.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Artist Names - Below the album name
-                    ClickableArtistText(
-                        artists = albumWithSongs.artists,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Normal,
-                            textAlign = TextAlign.Center,
-                        ),
-                        color = MaterialTheme.colorScheme.secondary,
-                        maxLines = Int.MAX_VALUE,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Metadata - Year first, then song count • duration
                     val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+
+                    // Horizontal Hero Row: Cover on left, metadata on right
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Year
-                        if (albumWithSongs.album.year != null) {
-                            Text(
-                                text = albumWithSongs.album.year.toString(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        // Artwork with ambient glow
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(128.dp),
+                        ) {
+                            // Ambient radial halo
+                            Box(
+                                modifier = Modifier
+                                    .size(128.dp)
+                                    .background(
+                                        Brush.radialGradient(
+                                            listOf(
+                                                SpotifyGreen.copy(alpha = 0.35f),
+                                                Color.Transparent,
+                                            ),
+                                        ),
+                                        shape = RoundedCornerShape(22.dp),
+                                    ),
                             )
+
+                            Surface(
+                                modifier = Modifier.size(114.dp),
+                                shape = RoundedCornerShape(16.dp),
+                            ) {
+                                AsyncImage(
+                                    model = albumWithSongs.album.thumbnailUrl?.resize(544, 544),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
                         }
 
-                        // Song Count • Duration
-                        Text(
-                            text =
-                                buildString {
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = buildString {
+                                    append("Album • ")
                                     append(
                                         pluralStringResource(
                                             R.plurals.n_song,
@@ -273,66 +266,55 @@ fun AlbumScreen(
                                             albumWithSongs.songs.size,
                                         ),
                                     )
-                                    if (totalDuration > 0) {
-                                        append(" ")
-                                        append(makeTimeString(totalDuration * 1000L))
-                                    }
                                 },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                        )
-                    }
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFF8A90A0),
+                            )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = albumWithSongs.album.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
 
-                    // Action Buttons Row
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        // Like Button - Smaller secondary button
-                        Surface(
-                            onClick = {
-                                database.query {
-                                    update(albumWithSongs.album.toggleLike())
-                                }
-                            },
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(48.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter =
-                                        painterResource(
-                                            if (albumWithSongs.album.bookmarkedAt !=
-                                                null
-                                            ) {
-                                                R.drawable.favorite
-                                            } else {
-                                                R.drawable.favorite_border
-                                            },
-                                        ),
-                                    contentDescription = null,
-                                    tint =
-                                        if (albumWithSongs.album.bookmarkedAt != null) {
-                                            MaterialTheme.colorScheme.error
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                    modifier = Modifier.size(24.dp),
+                            ClickableArtistText(
+                                artists = albumWithSongs.artists,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Normal,
+                                ),
+                                color = Color(0xFF8A90A0),
+                                maxLines = 2,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+
+                            if (albumWithSongs.album.year != null || totalDuration > 0) {
+                                Text(
+                                    text = buildString {
+                                        if (albumWithSongs.album.year != null) {
+                                            append(albumWithSongs.album.year.toString())
+                                        }
+                                        if (totalDuration > 0) {
+                                            if (albumWithSongs.album.year != null) append(" • ")
+                                            append(makeTimeString(totalDuration * 1000L))
+                                        }
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF6B7280),
                                 )
                             }
                         }
+                    }
 
-                        // Play Button - Larger primary circular button
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Action Controls: Dual Pills (Play, Shuffle) + Like + More
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // Play Pill Button
                         Surface(
                             onClick = {
                                 if (!isListenTogetherGuest) {
@@ -342,40 +324,119 @@ fun AlbumScreen(
                                     )
                                 }
                             },
-                            color = MaterialTheme.colorScheme.primary,
                             shape = CircleShape,
-                            modifier = Modifier.size(72.dp),
+                            color = SpotifyGreen,
+                            modifier = Modifier.height(42.dp),
                         ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize(),
+                            Row(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.play),
                                     contentDescription = stringResource(R.string.play),
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(32.dp),
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.play),
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.labelLarge,
                                 )
                             }
                         }
 
-                        // Menu Button - Smaller secondary button
+                        // Shuffle Pill Button
+                        Surface(
+                            onClick = {
+                                if (!isListenTogetherGuest && filteredSongs.isNotEmpty()) {
+                                    playerConnection.service.getAutomix(playlistId)
+                                    val randomIdx = filteredSongs.indices.random()
+                                    playerConnection.playQueue(
+                                        LocalAlbumRadio(albumWithSongs, startIndex = randomIdx),
+                                    )
+                                    playerConnection.player.shuffleModeEnabled = true
+                                }
+                            },
+                            shape = CircleShape,
+                            color = Color(0xFF1E222D),
+                            border = BorderStroke(1.dp, Color(0x33FFFFFF)),
+                            modifier = Modifier.height(42.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 18.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.shuffle),
+                                    contentDescription = stringResource(R.string.action_shuffle_on),
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(
+                                    text = "Shuffle",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Like Button
+                        Surface(
+                            onClick = {
+                                database.query {
+                                    update(albumWithSongs.album.toggleLike())
+                                }
+                            },
+                            shape = CircleShape,
+                            color = Color(0xFF1E222D),
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        if (albumWithSongs.album.bookmarkedAt != null) {
+                                            R.drawable.favorite
+                                        } else {
+                                            R.drawable.favorite_border
+                                        },
+                                    ),
+                                    contentDescription = null,
+                                    tint = if (albumWithSongs.album.bookmarkedAt != null) {
+                                        SpotifyGreen
+                                    } else {
+                                        Color.White.copy(alpha = 0.7f)
+                                    },
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+
+                        // More Menu Button
                         Surface(
                             onClick = {
                                 menuState.show {
                                     AlbumMenu(
-                                        originalAlbum =
-                                            Album(
-                                                albumWithSongs.album,
-                                                albumWithSongs.artists,
-                                            ),
+                                        originalAlbum = Album(
+                                            albumWithSongs.album,
+                                            albumWithSongs.artists,
+                                        ),
                                         onDismiss = menuState::dismiss,
                                     )
                                 }
                             },
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(48.dp),
+                            color = Color(0xFF1E222D),
+                            modifier = Modifier.size(40.dp),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -384,7 +445,8 @@ fun AlbumScreen(
                                 Icon(
                                     painter = painterResource(R.drawable.more_vert),
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
+                                    tint = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(20.dp),
                                 )
                             }
                         }
@@ -405,12 +467,25 @@ fun AlbumScreen(
                         }
                     }
 
+                    val plays = songPlays[song.id]
+                    val andString = stringResource(R.string.and)
+                    val subtitle = if (plays != null) {
+                        joinByBullet(
+                            song.orderedArtists.joinToArtistString(" $andString ") {
+                                ArtistNameAliases.resolve(artistNameAliases, it.id, it.name)
+                            },
+                            plays,
+                            makeTimeString(song.song.duration * 1000L),
+                        )
+                    } else null
+
                     SongListItem(
                         song = song,
                         albumIndex = index + 1,
                         isActive = song.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
                         showInLibraryIcon = true,
+                        subtitleOverride = subtitle,
                         trailingContent = {
                             if (inSelectMode) {
                                 Checkbox(
@@ -530,6 +605,7 @@ fun AlbumScreen(
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
                 )
             }
         },

@@ -17,11 +17,11 @@ object PlayerColorExtractor {
         return listOf(
             primaryColor,
             primaryColor.copy(
-                red = primaryColor.red * 0.6f,
-                green = primaryColor.green * 0.6f,
-                blue = primaryColor.blue * 0.6f,
+                red = primaryColor.red * 0.45f,
+                green = primaryColor.green * 0.45f,
+                blue = primaryColor.blue * 0.45f,
             ),
-            Color.Black,
+            SpotifyDarkBase,
         )
     }
 }

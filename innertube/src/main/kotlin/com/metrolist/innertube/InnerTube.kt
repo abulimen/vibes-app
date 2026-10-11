@@ -15,6 +15,8 @@ import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.request.header
 import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
@@ -22,6 +24,10 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import org.json.JSONArray
+import org.json.JSONObject
+import com.metrolist.innertubex.utils.sha1
+import com.metrolist.innertube.utils.parseCookieString
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
 import kotlinx.coroutines.Dispatchers
@@ -359,6 +365,50 @@ class InnerTube(
         innerTubeX
             .deletePrivatelyOwnedEntity(YouTubeClient.WEB_REMIX, entityId)
             .requireSuccess("deletePrivatelyOwnedEntity")
+
+    suspend fun performCommentAction(
+        action: String,
+        client: YouTubeClient = YouTubeClient.WEB,
+    ): Result<Unit> = runCatching {
+        val session = innerTubeX.sessionSnapshot()
+        val sapisid = session.sapisid ?: parseCookieString(session.cookie.orEmpty())["SAPISID"]
+        val timestamp = System.currentTimeMillis() / 1000
+
+        val requestBody = JSONObject().apply {
+            put("context", JSONObject().apply {
+                put("client", JSONObject().apply {
+                    put("clientName", client.clientName)
+                    put("clientVersion", client.clientVersion)
+                    put("hl", session.locale.hl)
+                    put("gl", session.locale.gl)
+                    session.visitorData?.let { put("visitorData", it) }
+                })
+                session.dataSyncId?.let {
+                    put("user", JSONObject().apply { put("onBehalfOfUser", it) })
+                }
+            })
+            put("actions", JSONArray().apply {
+                put(action)
+            })
+        }.toString()
+
+        val response = httpClient.post("https://www.youtube.com/youtubei/v1/comment/perform_comment_action") {
+            contentType(ContentType.Application.Json)
+            session.cookie?.let { header("Cookie", it) }
+            if (sapisid != null) {
+                val sapisidHash = sha1("$timestamp $sapisid https://www.youtube.com")
+                header("Authorization", "SAPISIDHASH ${timestamp}_$sapisidHash")
+            }
+            header("X-Origin", "https://www.youtube.com")
+            header("X-Goog-AuthUser", session.authUser ?: "0")
+            session.visitorData?.let { header("X-Goog-Visitor-Id", it) }
+            setBody(requestBody)
+        }
+
+        if (!response.status.isSuccess()) {
+            throw InnerTubeHttpException("performCommentAction", response.status)
+        }
+    }
 
     private suspend fun HttpResponse.requireSuccess(operation: String): HttpResponse {
         if (!status.isSuccess()) {

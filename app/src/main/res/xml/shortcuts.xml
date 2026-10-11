@@ -8,7 +8,7 @@
         <intent
             android:action="com.metrolist.music.action.SEARCH"
             android:targetClass="com.metrolist.music.MainActivity"
-            android:targetPackage="com.metrolist.music" />
+            android:targetPackage="com.vibes.music" />
     </shortcut>
     <shortcut
         android:enabled="true"
@@ -18,6 +18,6 @@
         <intent
             android:action="com.metrolist.music.action.LIBRARY"
             android:targetClass="com.metrolist.music.MainActivity"
-            android:targetPackage="com.metrolist.music" />
+            android:targetPackage="com.vibes.music" />
     </shortcut>
 </shortcuts>

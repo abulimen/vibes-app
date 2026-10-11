@@ -60,6 +60,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.items
+import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.LocalPlayerAwareWindowInsets
@@ -99,6 +102,11 @@ fun ChartsScreen(
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
+    val canNavigateUp = remember(navController.previousBackStackEntry) {
+        val prevRoute = navController.previousBackStackEntry?.destination?.route
+        prevRoute != null && Screens.MainScreens.none { it.route == prevRoute }
+    }
+
     LaunchedEffect(Unit) {
         if (chartsPage == null) {
             viewModel.loadCharts()
@@ -108,16 +116,18 @@ fun ChartsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.charts)) },
+                title = { Text(stringResource(R.string.hotlist)) },
                 navigationIcon = {
-                    IconButton(
-                        onClick = { navController.navigateUp() },
-                        onLongClick = { navController.backToMain() },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
+                    if (canNavigateUp) {
+                        IconButton(
+                            onClick = { navController.navigateUp() },
+                            onLongClick = { navController.backToMain() },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_back),
+                                contentDescription = null,
+                            )
+                        }
                     }
                 },
             )
@@ -229,7 +239,37 @@ fun ChartsScreen(
                             )
                         }
                         item(key = "section_content_${section.title}") {
-                            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            val songItems = section.items.filterIsInstance<SongItem>().distinctBy { it.id }
+                            val albumItems = section.items.filterIsInstance<AlbumItem>().distinctBy { it.id }
+
+                            if (songItems.isEmpty() && albumItems.isNotEmpty()) {
+                                LazyRow(
+                                    contentPadding =
+                                        WindowInsets.systemBars
+                                            .only(WindowInsetsSides.Horizontal)
+                                            .asPaddingValues(),
+                                    modifier = Modifier.animateItem(),
+                                ) {
+                                    items(
+                                        items = albumItems,
+                                        key = { "charts_album_${it.id}" },
+                                    ) { album ->
+                                        YouTubeGridItem(
+                                            item = album,
+                                            isActive = false,
+                                            isPlaying = false,
+                                            coroutineScope = coroutineScope,
+                                            modifier =
+                                                Modifier
+                                                    .clickable {
+                                                        navController.navigate("album/${album.id}")
+                                                    }
+                                                    .animateItem(),
+                                        )
+                                    }
+                                }
+                            } else {
+                                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                                 val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
                                 val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
 
@@ -315,6 +355,7 @@ fun ChartsScreen(
                                 }
                             }
                         }
+                    }
                     }
 
                     chartsPage?.sections?.find { it.title == "Top music videos" }?.let { topVideosSection ->

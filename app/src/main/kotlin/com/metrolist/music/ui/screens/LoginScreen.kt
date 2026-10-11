@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -296,95 +297,99 @@ fun LoginScreen(
         }
     }
 
-    Box(
-        modifier =
-            Modifier
-                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
-                .fillMaxSize(),
-    ) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { webViewContext ->
-                WebView(webViewContext).apply {
-                    webViewClient =
-                        object : WebViewClient() {
-                            override fun shouldOverrideUrlLoading(
-                                view: WebView,
-                                request: WebResourceRequest,
-                            ): Boolean {
-                                val scheme = request.url.scheme
-                                if (scheme == "http" || scheme == "https") return false
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        stringResource(
+                            if (isSwitchingChannel) R.string.switch_youtube_channel else R.string.login,
+                        ),
+                    )
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = navController::navigateUp,
+                        onLongClick = navController::backToMain,
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                        )
+                    }
+                },
+            )
+        },
+        contentWindowInsets = LocalPlayerAwareWindowInsets.current,
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { webViewContext ->
+                    WebView(webViewContext).apply {
+                        webViewClient =
+                            object : WebViewClient() {
+                                override fun shouldOverrideUrlLoading(
+                                    view: WebView,
+                                    request: WebResourceRequest,
+                                ): Boolean {
+                                    val scheme = request.url.scheme
+                                    if (scheme == "http" || scheme == "https") return false
 
-                                if (scheme == "intent") {
-                                    runCatching {
-                                        Intent.parseUri(request.url.toString(), Intent.URI_INTENT_SCHEME)
-                                            .apply {
-                                                addCategory(Intent.CATEGORY_BROWSABLE)
-                                                component = null
-                                                selector = null
-                                            }.let(context::startActivity)
+                                    if (scheme == "intent") {
+                                        runCatching {
+                                            Intent.parseUri(request.url.toString(), Intent.URI_INTENT_SCHEME)
+                                                .apply {
+                                                    addCategory(Intent.CATEGORY_BROWSABLE)
+                                                    component = null
+                                                    selector = null
+                                                }.let(context::startActivity)
+                                        }
+                                    }
+                                    return true
+                                }
+
+                                override fun onPageFinished(
+                                    view: WebView,
+                                    url: String?,
+                                ) {
+                                    val pageUri = url?.let(Uri::parse)
+                                    if (pageUri?.scheme == "https" && pageUri.host == "music.youtube.com") {
+                                        handleAuthenticatedPage()
                                     }
                                 }
-                                return true
                             }
-
-                            override fun onPageFinished(
-                                view: WebView,
-                                url: String?,
-                            ) {
-                                val pageUri = url?.let(Uri::parse)
-                                if (pageUri?.scheme == "https" && pageUri.host == "music.youtube.com") {
-                                    handleAuthenticatedPage()
-                                }
-                            }
+                        settings.apply {
+                            javaScriptEnabled = true
+                            domStorageEnabled = true
+                            setSupportZoom(true)
+                            builtInZoomControls = true
+                            displayZoomControls = false
                         }
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        setSupportZoom(true)
-                        builtInZoomControls = true
-                        displayZoomControls = false
-                    }
-                    addJavascriptInterface(jsInterface, "Android")
-                    webViewRef = this
-                    if (isSwitchingChannel) {
-                        restoreYouTubeCookies(YouTube.cookie)
-                    }
-                    loadUrl(
+                        addJavascriptInterface(jsInterface, "Android")
+                        webViewRef = this
                         if (isSwitchingChannel) {
-                            "https://music.youtube.com"
-                        } else {
-                            "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
-                        },
-                    )
-                }
-            },
-        )
+                            restoreYouTubeCookies(YouTube.cookie)
+                        }
+                        loadUrl(
+                            if (isSwitchingChannel) {
+                                "https://music.youtube.com"
+                            } else {
+                                "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
+                            },
+                        )
+                    }
+                },
+            )
 
-        if (loginStage == LoginStage.CheckingAccounts || loginStage == LoginStage.Completing) {
-            CircularProgressIndicator(Modifier.align(Alignment.Center))
+            if (loginStage == LoginStage.CheckingAccounts || loginStage == LoginStage.Completing) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+            }
         }
-
-        TopAppBar(
-            title = {
-                Text(
-                    stringResource(
-                        if (isSwitchingChannel) R.string.switch_youtube_channel else R.string.login,
-                    ),
-                )
-            },
-            navigationIcon = {
-                IconButton(
-                    onClick = navController::navigateUp,
-                    onLongClick = navController::backToMain,
-                ) {
-                    Icon(
-                        painterResource(R.drawable.arrow_back),
-                        contentDescription = null,
-                    )
-                }
-            },
-        )
     }
 
     if (loginStage == LoginStage.SelectingAccount) {

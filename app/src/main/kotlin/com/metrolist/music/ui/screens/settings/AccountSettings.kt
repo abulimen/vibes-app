@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -271,11 +272,12 @@ fun AccountSettings(
                             }
 
                             Text(
-                                text = if (isLoggedIn) accountName else stringResource(R.string.login),
+                                text = if (isLoggedIn) accountName else stringResource(R.string.login_with_youtube_music),
                             )
                         }
                     },
-                    icon = if (!isLoggedIn) painterResource(R.drawable.login) else null,
+                    icon = if (!isLoggedIn) painterResource(R.drawable.ic_youtube_music) else null,
+                    iconTint = Color.Unspecified,
                     trailingContent = {
                         if (isLoggedIn) {
                             OutlinedButton(
@@ -301,6 +303,15 @@ fun AccountSettings(
                         }
                     }
                 ),
+                Material3SettingsItem(
+                    title = { Text(stringResource(R.string.import_from_spotify)) },
+                    icon = painterResource(R.drawable.ic_spotify),
+                    iconTint = Color.Unspecified,
+                    onClick = {
+                        onClose()
+                        navController.navigate("spotify_import")
+                    }
+                ),
                 if (isLoggedIn) {
                     Material3SettingsItem(
                         title = { Text(stringResource(R.string.switch_youtube_channel)) },
@@ -320,20 +331,10 @@ fun AccountSettings(
         Material3SettingsGroup(
             items = listOf(
                 Material3SettingsItem(
-                    title = {
-                        Text(
-                            when {
-                                !isLoggedIn -> stringResource(R.string.advanced_login)
-                                showToken -> stringResource(R.string.token_shown)
-                                else -> stringResource(R.string.token_hidden)
-                            }
-                        )
-                    },
-                    icon = painterResource(R.drawable.token),
+                    title = { Text(stringResource(R.string.buy_me_a_coffee)) },
+                    icon = painterResource(R.drawable.buymeacoffee),
                     onClick = {
-                        if (!isLoggedIn) showTokenEditor = true
-                        else if (!showToken) showToken = true
-                        else showTokenEditor = true
+                        uriHandler.openUri("https://myhappr.com/jonathansamuel")
                     }
                 ),
                 Material3SettingsItem(
@@ -391,16 +392,6 @@ fun AccountSettings(
             items = buildList {
                 add(
                     Material3SettingsItem(
-                        title = { Text(stringResource(R.string.integrations)) },
-                        icon = painterResource(R.drawable.integration),
-                        onClick = {
-                            onClose()
-                            navController.navigate("settings/integrations")
-                        }
-                    )
-                )
-                add(
-                    Material3SettingsItem(
                         title = { Text(stringResource(R.string.settings)) },
                         icon = painterResource(R.drawable.settings),
                         showBadge = BuildConfig.UPDATER_AVAILABLE &&
@@ -408,6 +399,16 @@ fun AccountSettings(
                         onClick = {
                             onClose()
                             navController.navigate("settings")
+                        }
+                    )
+                )
+                add(
+                    Material3SettingsItem(
+                        title = { Text(stringResource(R.string.view_onboarding)) },
+                        icon = painterResource(R.drawable.info),
+                        onClick = {
+                            onClose()
+                            navController.navigate("onboarding")
                         }
                     )
                 )

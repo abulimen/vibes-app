@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 
@@ -115,17 +116,30 @@ private fun Material3SettingsItemRow(
             item.leadingContent.invoke()
             Spacer(modifier = Modifier.width(16.dp))
         } else if (item.icon != null) {
+            val isOriginalTint = item.iconTint == Color.Unspecified
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(
-                            alpha = if (item.isHighlighted) 0.15f else 0.1f
+                    .then(
+                        if (isOriginalTint) Modifier
+                        else Modifier.background(
+                            MaterialTheme.colorScheme.primary.copy(
+                                alpha = if (item.isHighlighted) 0.15f else 0.1f
+                            )
                         )
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                val iconSize = if (isOriginalTint) 28.dp else 24.dp
+                val iconModifier = Modifier.size(iconSize)
+                val tint = item.iconTint ?: if (!item.enabled)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                else if (item.isHighlighted)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+
                 if (item.showBadge) {
                     BadgedBox(
                         badge = {
@@ -137,26 +151,16 @@ private fun Material3SettingsItemRow(
                         Icon(
                             painter = item.icon,
                             contentDescription = null,
-                            tint = if (!item.enabled)
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            else if (item.isHighlighted)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            modifier = Modifier.size(24.dp)
+                            tint = tint,
+                            modifier = iconModifier
                         )
                     }
                 } else {
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = if (!item.enabled)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        else if (item.isHighlighted)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                        modifier = Modifier.size(24.dp)
+                        tint = tint,
+                        modifier = iconModifier
                     )
                 }
             }
@@ -209,6 +213,7 @@ private fun Material3SettingsItemRow(
  */
 data class Material3SettingsItem(
     val icon: Painter? = null,
+    val iconTint: Color? = null,
     val leadingContent: (@Composable () -> Unit)? = null,
     val title: @Composable () -> Unit,
     val description: (@Composable () -> Unit)? = null,

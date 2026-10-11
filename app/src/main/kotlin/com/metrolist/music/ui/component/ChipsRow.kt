@@ -51,9 +51,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.OptionStats
+import com.metrolist.music.ui.theme.SpotifyGreen
+import com.metrolist.music.ui.theme.spotifyPressFeedback
 
 @Composable
 fun <E> ChipsRow(
@@ -74,14 +77,23 @@ fun <E> ChipsRow(
 
         chips.forEach { (value, label) ->
             FilterChip(
-                label = { Text(label) },
+                label = {
+                    Text(
+                        text = label,
+                        fontWeight = if (currentValue == value) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
                 selected = currentValue == value,
                 colors = FilterChipDefaults.filterChipColors(
-                    containerColor = containerColor,
+                    containerColor = Color(0xFF2A2A2A),
+                    labelColor = Color.White,
+                    selectedContainerColor = SpotifyGreen,
+                    selectedLabelColor = Color.Black,
                 ),
                 onClick = { onValueUpdate(value) },
                 shape = RoundedCornerShape(16.dp),
-                border = null
+                border = null,
+                modifier = Modifier.spotifyPressFeedback(),
             )
 
             Spacer(Modifier.width(8.dp))

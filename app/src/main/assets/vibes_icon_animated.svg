@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-140 -140 1375 1375" width="1375" height="1375" role="img" aria-label="Smile">
+  <title>Smile</title>
+  <defs>
+    <!-- soft green halo behind the logo -->
+    <radialGradient id="glow" cx="547.5" cy="547.5" r="687.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0.76" stop-color="#01F672" stop-opacity="0.5"/>
+      <stop offset="0.86" stop-color="#01F672" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#01F672" stop-opacity="0"/>
+    </radialGradient>
+    <!-- light streak that glides across the face -->
+    <linearGradient id="sheenGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0.35" stop-color="#fff" stop-opacity="0.08"/>
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0.32"/>
+      <stop offset="0.65" stop-color="#fff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="face">
+      <circle cx="547.5" cy="547.5" r="525.8"/>
+    </clipPath>
+  </defs>
+
+  <style>
+    /* Master loop = 4s (8 beats at 120 BPM). Every animation period divides 4s,
+       so the loop is seamless. */
+
+    .glow  { transform-origin: 547.5px 547.5px; animation: glow 1s ease-out infinite; }
+    @keyframes glow {
+      0%        { opacity: .65; transform: scale(1); }
+      10%       { opacity: 1;   transform: scale(1.04); }
+      60%, 100% { opacity: .65; transform: scale(1); }
+    }
+
+    .ring   { fill: none; stroke: #01F672; stroke-width: 3;
+              transform-box: fill-box; transform-origin: center;
+              opacity: 0; animation: ring 2s cubic-bezier(.16,.6,.3,1) infinite; }
+    .ring.b { stroke-width: 2; animation-delay: -1s; }
+    @keyframes ring {
+      0%   { transform: scale(1);    opacity: 0; }
+      6%   { opacity: .55; }
+      100% { transform: scale(1.24); opacity: 0; }
+    }
+
+    .sway { transform-origin: 547.5px 547.5px;
+            animation: sway 4s cubic-bezier(.37,0,.63,1) infinite; }
+    @keyframes sway {
+      0%, 100% { transform: rotate(2deg); }
+      50%      { transform: rotate(-2deg); }
+    }
+
+    .beat { transform-origin: 547.5px 547.5px;
+            animation: beat 1s cubic-bezier(.2,.7,.2,1) infinite; }
+    @keyframes beat {
+      0%        { transform: scale(1); }
+      10%       { transform: scale(1.03); }
+      55%, 100% { transform: scale(1); }
+    }
+
+    /* eyes behave like two equalizer bars, anchored at their base,
+       with a touch of squash and stretch */
+    .eye { transform-box: fill-box; transform-origin: 50% 100%;
+           animation-duration: 4s; animation-iteration-count: infinite;
+           animation-timing-function: cubic-bezier(.45,0,.25,1); }
+    .eye.r { animation-name: eyeR; }
+    .eye.l { animation-name: eyeL; }
+    @keyframes eyeR {
+      0%, 100% { transform: scale(1, 1); }
+      12.5%    { transform: scale(.983, 1.05); }
+      25%      { transform: scale(1.054, .86); }
+      37.5%    { transform: scale(.986, 1.04); }
+      50%      { transform: scale(1.091, .78); }
+      62.5%    { transform: scale(.993, 1.02); }
+      75%      { transform: scale(1.038, .9); }
+      87.5%    { transform: scale(.986, 1.04); }
+    }
+    @keyframes eyeL {
+      0%, 100% { transform: scale(1, 1); }
+      12.5%    { transform: scale(1.046, .88); }
+      25%      { transform: scale(.933, 1.22); }
+      37.5%    { transform: scale(1.03, .92); }
+      50%      { transform: scale(.944, 1.18); }
+      62.5%    { transform: scale(1.054, .86); }
+      75%      { transform: scale(.927, 1.24); }
+      87.5%    { transform: scale(1.018, .95); }
+    }
+
+    /* the smile "sings" on the beat, biggest on the downbeat of the bar */
+    .smile { transform-box: fill-box; transform-origin: 50% 0%;
+             animation: smile 4s cubic-bezier(.3,.7,.2,1) infinite; }
+    @keyframes smile {
+      0%, 18%, 25%, 43%, 50%, 68%, 75%, 93%, 100% { transform: scale(1, 1); }
+      3%  { transform: scale(1.05, 1.16); }
+      28% { transform: scale(1.02, 1.07); }
+      53% { transform: scale(1.03, 1.10); }
+      78% { transform: scale(1.02, 1.07); }
+    }
+
+    .sheen { animation: sheen 4s cubic-bezier(.5,0,.2,1) infinite; }
+    @keyframes sheen {
+      0%        { transform: translateX(-300px)  skewX(-20deg); }
+      40%, 100% { transform: translateX(1500px)  skewX(-20deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+    }
+  </style>
+
+  <!-- halo and sound-wave rings -->
+  <circle class="glow" cx="547.5" cy="547.5" r="687.5" fill="url(#glow)"/>
+  <circle class="ring"   cx="547.5" cy="547.5" r="525.8"/>
+  <circle class="ring b" cx="547.5" cy="547.5" r="525.8"/>
+
+  <g class="sway">
+    <g class="beat">
+      <!-- face -->
+      <circle cx="547.5" cy="547.5" r="525.8" fill="#01F672"/>
+
+      <!-- right eye -->
+      <path class="eye r" fill="#0A0909" d="M638.57 255.4C646.48 254.73 654.57 255.19 662.5 255.19C676.5 255.19 690.5 255.12 704.5 255.18C718.27 255.24 732.88 254.06 745.37 261.1C772.71 276.5 771.96 301.71 771.99 329.5C772.02 374.5 771.98 419.5 771.96 464.5C771.96 493.17 771.99 521.83 771.98 550.5C771.98 561.43 772.77 572.64 770.77 583.44C767.25 602.47 751.96 618.83 733.21 623.61C718.02 627.48 699.21 625.42 683.5 625.43C660.86 625.44 629.58 629.56 610.55 615.98C587.07 599.21 589.26 573.14 589.27 547.5C589.28 497.17 589.35 446.83 589.27 396.5C589.26 385.83 589.28 375.17 589.28 364.5C589.28 352.17 589.27 339.83 589.28 327.5C589.28 317.92 588.59 308.03 590.24 298.55C593.2 281.59 605.48 266.44 621.27 259.74C626.71 257.43 632.67 255.9 638.57 255.4Z"/>
+
+      <!-- left eye -->
+      <path class="eye l" fill="#0A0909" d="M403.77 413.44C417.94 411.49 433.21 413 447.5 413.02C474.22 413.07 504.56 408.07 524.26 430.24C538.36 446.1 536.57 467.76 536.54 487.5C536.5 508.17 536.61 528.83 536.54 549.5C536.51 560.01 537.47 570.92 535.65 581.32C532.68 598.26 521.88 612.49 506.39 619.89C492.45 626.55 476.49 624.77 461.5 624.85C449.5 624.92 437.5 624.86 425.5 624.85C399.79 624.83 378.01 624.87 363.64 599.83C357.08 588.39 357.14 575.24 357.1 562.5C357.07 549.5 357.09 536.5 357.1 523.5C357.1 510.83 357.1 498.17 357.1 485.5C357.11 475.29 356.23 464.71 358.29 454.64C361.45 439.15 372.88 424.32 387.53 418.07C392.75 415.84 398.15 414.21 403.77 413.44Z"/>
+
+      <!-- smile -->
+      <path class="smile" fill="#0A0909" d="M862.71 570.45C901.28 567.89 927.94 604.93 915.48 640.97C910.7 654.79 900.32 666.61 891.8 678.28C867.8 711.15 838.24 739.84 805.9 764.43C726.59 824.73 622.21 851.46 523.5 846.25C435.8 841.63 353.08 817.25 283.97 761.53C251.94 735.7 224.62 706.32 200.42 673.1C190.25 659.13 178.28 644.45 177.09 626.5C174.35 585.02 221.23 561.83 256.43 576.12C272.2 582.52 283.42 596.67 294.65 608.85C306.72 621.94 320.66 633.89 334.72 644.8C382.08 681.55 437.63 704.01 496.87 712.53C585.46 725.26 673.95 705.03 748.43 655.97C769.5 642.09 788.85 624.97 806.55 607.06C823.39 590.02 836.63 572.18 862.71 570.45Z"/>
+
+      <!-- glossy sheen, clipped to the face -->
+      <g clip-path="url(#face)">
+        <rect class="sheen" x="0" y="-100" width="240" height="1300" fill="url(#sheenGrad)"/>
+      </g>
+    </g>
+  </g>
+</svg>

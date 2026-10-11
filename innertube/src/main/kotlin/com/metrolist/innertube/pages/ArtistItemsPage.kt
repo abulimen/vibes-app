@@ -73,7 +73,8 @@ data class ArtistItemsPage(
                 endpoint = renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint,
                 libraryAddToken = libraryTokens.addToken,
                 libraryRemoveToken = libraryTokens.removeToken,
-                isEpisode = renderer.isEpisode
+                isEpisode = renderer.isEpisode,
+                plays = PageHelper.extractPlays(renderer.flexColumns, renderer.fixedColumns),
             )
         }
 
@@ -97,6 +98,10 @@ data class ArtistItemsPage(
                     val title = renderer.title.runs?.firstOrNull()?.text ?: return null
                     val videoId = renderer.navigationEndpoint.watchEndpoint?.videoId ?: return null
                     val artists = PageHelper.extractArtists(renderer.subtitle?.runs)
+                    val twoRowPlays = renderer.subtitle?.runs?.firstOrNull {
+                        val t = it.text.trim()
+                        (t.contains("play", ignoreCase = true) || t.contains("view", ignoreCase = true)) && t.any { c -> c.isDigit() }
+                    }?.text?.trim()
 
                     SongItem(
                         id = videoId,
@@ -106,7 +111,8 @@ data class ArtistItemsPage(
                         duration = null,
                         musicVideoType = renderer.musicVideoType,
                         thumbnail = renderer.thumbnailRenderer.getThumbnailUrl() ?: return null,
-                        endpoint = renderer.navigationEndpoint.watchEndpoint
+                        endpoint = renderer.navigationEndpoint.watchEndpoint,
+                        plays = twoRowPlays,
                     )
                 }
                 renderer.isPlaylist -> PlaylistItem(

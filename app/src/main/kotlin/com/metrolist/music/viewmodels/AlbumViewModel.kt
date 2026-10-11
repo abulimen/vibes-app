@@ -34,6 +34,7 @@ constructor(
             .albumWithSongs(albumId)
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     var otherVersions = MutableStateFlow<List<AlbumItem>>(emptyList())
+    val songPlays = MutableStateFlow<Map<String, String>>(emptyMap())
 
     init {
         viewModelScope.launch {
@@ -43,6 +44,7 @@ constructor(
                 .onSuccess {
                     playlistId.value = it.album.playlistId
                     otherVersions.value = it.otherVersions
+                    songPlays.value = it.songs.filter { song -> song.plays != null }.associate { song -> song.id to song.plays!! }
                     database.transaction {
                         if (album == null) {
                             insert(it)

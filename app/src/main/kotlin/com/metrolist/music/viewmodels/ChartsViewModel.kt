@@ -26,20 +26,59 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
 
+    init {
+        loadCharts()
+    }
+
     fun loadCharts() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            
+
             YouTube.getChartsPage()
                 .onSuccess { page ->
-                    _chartsPage.value = page
+                    if (page.sections.isNotEmpty()) {
+                        _chartsPage.value = page
+                    } else {
+                        fallbackExplore()
+                    }
                 }
-                .onFailure { e ->
-                    _error.value = "Failed to load charts: ${e.message}"
+                .onFailure {
+                    fallbackExplore()
                 }
-            
+
             _isLoading.value = false
+        }
+    }
+
+    private suspend fun fallbackExplore() {
+        val sections = mutableListOf<ChartsPage.ChartSection>()
+        YouTube.explore().onSuccess { explorePage ->
+            if (explorePage.newReleaseAlbums.isNotEmpty()) {
+                sections.add(
+                    ChartsPage.ChartSection(
+                        title = "New Releases",
+                        items = explorePage.newReleaseAlbums,
+                        chartType = ChartsPage.ChartType.NEW_RELEASES,
+                    )
+                )
+            }
+        }
+        YouTube.newReleaseAlbums().onSuccess { albums ->
+            if (albums.isNotEmpty() && sections.none { it.title == "New Releases" }) {
+                sections.add(
+                    ChartsPage.ChartSection(
+                        title = "New Releases",
+                        items = albums,
+                        chartType = ChartsPage.ChartType.NEW_RELEASES,
+                    )
+                )
+            }
+        }
+        if (sections.isNotEmpty()) {
+            _chartsPage.value = ChartsPage(sections = sections, continuation = null)
+        } else {
+            _error.value = "Failed to load charts"
         }
     }
 

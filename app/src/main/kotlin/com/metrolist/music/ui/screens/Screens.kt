@@ -45,7 +45,14 @@ sealed class Screens(
         route = "library"
     )
 
+    object Hotlist : Screens(
+        titleId = R.string.hotlist,
+        iconIdInactive = R.drawable.local_fire_department_outlined,
+        iconIdActive = R.drawable.local_fire_department,
+        route = "charts_screen"
+    )
+
     companion object {
-        val MainScreens = listOf(Home, Search, ListenTogether, Library)
+        val MainScreens = listOf(Home, Search, Library)
     }
 }

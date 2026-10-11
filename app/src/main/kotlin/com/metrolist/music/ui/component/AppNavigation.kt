@@ -5,9 +5,17 @@
 
 package com.metrolist.music.ui.component
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -29,7 +37,16 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.metrolist.music.ui.screens.Screens
+import com.metrolist.music.ui.theme.SpotifyGlassBackground
+import com.metrolist.music.ui.theme.SpotifyGreen
+import com.metrolist.music.ui.theme.SpotifyTextSecondary
+import com.metrolist.music.ui.theme.spotifyGlassBorder
+import com.metrolist.music.ui.theme.spotifyPressFeedback
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -57,7 +74,7 @@ fun AppNavigationRail(
     onSearchLongClick: (() -> Unit)? = null,
     onHomeLongHold: (() -> Unit)? = null,
 ) {
-    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+    val containerColor = if (pureBlack) Color.Black else SpotifyGlassBackground
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
@@ -109,17 +126,44 @@ fun AppNavigationRail(
             NavigationRailItem(
                 selected = isSelected,
                 onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     if (!isSearchItem && !isHomeHoldItem) {
                         onItemClick(screen, currentIsSelected)
                     }
                     // Long presses are handled via InteractionSource
                 },
                 interactionSource = interactionSource,
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = Color.White,
+                    selectedTextColor = Color.White,
+                    indicatorColor = Color.Transparent,
+                    unselectedIconColor = SpotifyTextSecondary,
+                    unselectedTextColor = SpotifyTextSecondary,
+                ),
                 icon = {
-                    Icon(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = stringResource(screen.titleId)
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = if (isSelected) {
+                            Modifier
+                                .background(
+                                    color = Color(0x33FFFFFF),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    width = 0.5.dp,
+                                    color = Color(0x33FFFFFF),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        } else {
+                            Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = stringResource(screen.titleId),
+                        )
+                    }
                 }
             )
         }
@@ -139,15 +183,20 @@ fun AppNavigationBar(
     onSearchLongClick: (() -> Unit)? = null,
     onHomeLongHold: (() -> Unit)? = null,
 ) {
-    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-    val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    val containerColor = if (pureBlack) Color.Black else Color(0xFF101217)
+    val contentColor = Color.White
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
+    val navShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+
     NavigationBar(
-        modifier = modifier,
+        modifier =
+            modifier
+                .clip(navShape)
+                .background(containerColor, navShape),
         containerColor = containerColor,
-        contentColor = contentColor
+        contentColor = contentColor,
     ) {
         navigationItems.forEach { screen ->
             val isSelected = remember(currentRoute, screen.route) {
@@ -177,6 +226,7 @@ fun AppNavigationBar(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onItemClick(screen, currentIsSelected)
                                 }
                             }
@@ -191,24 +241,54 @@ fun AppNavigationBar(
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     if (!isSearchItem && !isHomeHoldItem) {
                         onItemClick(screen, currentIsSelected)
                     }
                     // Long presses are handled via InteractionSource
                 },
                 interactionSource = interactionSource,
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color.White,
+                    selectedTextColor = Color.White,
+                    indicatorColor = Color.Transparent,
+                    unselectedIconColor = SpotifyTextSecondary,
+                    unselectedTextColor = SpotifyTextSecondary,
+                ),
                 icon = {
-                    Icon(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = stringResource(screen.titleId)
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = if (isSelected) {
+                            Modifier
+                                .background(
+                                    color = Color(0x33FFFFFF),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    width = 0.5.dp,
+                                    color = Color(0x33FFFFFF),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 14.dp, vertical = 4.dp)
+                        } else {
+                            Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = stringResource(screen.titleId),
+                        )
+                    }
                 },
                 label = if (!slimNav) {
                     {
                         Text(
                             text = stringResource(screen.titleId),
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 11.sp,
+                            color = if (isSelected) Color.White else SpotifyTextSecondary,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         )
                     }
                 } else null

@@ -137,7 +137,8 @@ data class ArtistPage(
                 endpoint = renderer.overlay?.musicItemThumbnailOverlayRenderer?.content
                     ?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint,
                 libraryAddToken = libraryTokens.addToken,
-                libraryRemoveToken = libraryTokens.removeToken
+                libraryRemoveToken = libraryTokens.removeToken,
+                plays = PageHelper.extractPlays(renderer.flexColumns, renderer.fixedColumns),
             )
         }
 
@@ -146,6 +147,10 @@ data class ArtistPage(
                 renderer.isSong -> {
                     val subtitleRuns = renderer.subtitle?.runs
                     val subtitleGroups = subtitleRuns.orEmpty().splitBySeparator()
+                    val twoRowPlays = subtitleRuns?.firstOrNull {
+                        val t = it.text.trim()
+                        (t.contains("play", ignoreCase = true) || t.contains("view", ignoreCase = true)) && t.any { c -> c.isDigit() }
+                    }?.text?.trim()
                     SongItem(
                         id = renderer.navigationEndpoint.watchEndpoint?.videoId ?: return null,
                         title =
@@ -165,7 +170,8 @@ data class ArtistPage(
                         thumbnail = renderer.thumbnailRenderer.getThumbnailUrl() ?: return null,
                         explicit = renderer.subtitleBadges?.find {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
-                        } != null
+                        } != null,
+                        plays = twoRowPlays,
                     )
                 }
 

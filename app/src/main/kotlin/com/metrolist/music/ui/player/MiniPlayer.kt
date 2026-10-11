@@ -9,9 +9,11 @@ package com.metrolist.music.ui.player
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -29,6 +31,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -122,6 +125,12 @@ import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.metrolist.music.ui.theme.PlayerColorExtractor
+import com.metrolist.music.ui.theme.SpotifyDarkSurface
+import com.metrolist.music.ui.theme.SpotifyElevated
+import com.metrolist.music.ui.theme.SpotifyGreen
+import com.metrolist.music.ui.theme.SpotifyTextPrimary
+import com.metrolist.music.ui.theme.SpotifyTextSecondary
+import com.metrolist.music.ui.theme.spotifyPressFeedback
 
 /**
  * Stable wrapper for progress state - reads values only during draw phase
@@ -144,6 +153,7 @@ fun MiniPlayer(
     positionState: MutableLongState,
     durationState: MutableLongState,
     modifier: Modifier = Modifier,
+    isExpanded: Boolean = false,
     onClick: () -> Unit = {},
 ) {
     val useNewMiniPlayerDesign by rememberPreference(UseNewMiniPlayerDesignKey, true)
@@ -155,6 +165,7 @@ fun MiniPlayer(
         NewMiniPlayer(
             progressState = progressState,
             modifier = modifier,
+            isExpanded = isExpanded,
             onClick = onClick,
         )
     } else {
@@ -176,6 +187,7 @@ fun MiniPlayer(
 private fun NewMiniPlayer(
     progressState: ProgressState,
     modifier: Modifier = Modifier,
+    isExpanded: Boolean = false,
     onClick: () -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -210,6 +222,9 @@ private fun NewMiniPlayer(
             }
         }
     val isCasting by castHandler?.isCasting?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+    val isPlaying by playerConnection.isPlaying.collectAsState()
+    val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
+    val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
 
     // Swipe settings
     val swipeSensitivity by rememberPreference(SwipeSensitivityKey, 0.73f)
@@ -306,9 +321,8 @@ private fun NewMiniPlayer(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(MiniPlayerHeight)
+                .fillMaxHeight()
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                .padding(horizontal = 12.dp)
                 .let { baseModifier ->
                     if (swipeThumbnail) {
                         baseModifier.pointerInput(Unit) {
@@ -373,15 +387,22 @@ private fun NewMiniPlayer(
                 },
     ) {
         val interactionSource = remember { MutableInteractionSource() }
+        val miniPlayerShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+        val isDefaultBackground = miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT
+        val containerBg = if (isDefaultBackground) Color(0xFFE2E4E9) else backgroundColor
+        val contentTextColor = if (isDefaultBackground) Color(0xFF0E1015) else Color.White
+        val subtitleTextColor = if (isDefaultBackground) Color(0xFF6B7280) else SpotifyTextSecondary
+        val heartTint = if (isDefaultBackground) Color(0xFF0E1015) else Color.White
+        val playBtnBg = if (isDefaultBackground) Color(0xFF14161F) else SpotifyGreen
+        val playBtnIcon = if (isDefaultBackground) Color.White else Color.Black
+
         Box(
             modifier =
                 Modifier
-                    .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
-                    .height(64.dp)
+                    .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth().fillMaxHeight())
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(color = backgroundColor)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
+                    .clip(miniPlayerShape)
+                    .background(color = containerBg)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
@@ -411,8 +432,8 @@ private fun NewMiniPlayer(
                 MiniPlayerBackgroundStyle.GRADIENT -> {
                     val colors = if (gradientColors.isNotEmpty()) gradientColors
                     else listOf(
-                        MaterialTheme.colorScheme.surfaceContainer,
-                        MaterialTheme.colorScheme.surfaceContainer,
+                        SpotifyDarkSurface,
+                        SpotifyDarkSurface,
                     )
                     Box(
                         Modifier
@@ -427,67 +448,176 @@ private fun NewMiniPlayer(
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .align(Alignment.TopStart)
+                    .padding(start = 12.dp, end = 16.dp, top = 4.dp, bottom = 11.dp),
             ) {
-                // Play button with progress - isolated composable
-                NewMiniPlayerPlayButton(
-                    progressState = progressState,
-                    playbackState = playbackState,
-                    isCasting = isCasting,
-                    castHandler = castHandler,
-                    playerConnection = playerConnection,
-                    mediaMetadata = mediaMetadata,
-                    primaryColor = primaryColor,
-                    outlineColor = outlineColor,
-                    listenTogetherManager = listenTogetherManager,
-                )
+                // Album Art Thumbnail or Video Preview on left with generous rounded corners
+                mediaMetadata?.let { metadata ->
+                    val isVideoMode by com.metrolist.music.LocalIsVideoMode.current
+                    if (isVideoMode && !isExpanded) {
+                        val curPos = runCatching { playerConnection.player.currentPosition }.getOrDefault(0L)
+                        com.metrolist.music.ui.player.YouTubeVideoPlayer(
+                            videoId = metadata.id,
+                            startSeconds = (curPos / 1000).toInt(),
+                            isPlaying = effectiveIsPlaying,
+                            currentPositionMs = curPos,
+                            isMini = true,
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(14.dp)),
+                        )
+                    } else {
+                        val thumbnailUrl = remember(metadata.thumbnailUrl) {
+                            metadata.thumbnailUrl?.resize(140, 140)
+                        }
+                        AsyncImage(
+                            model = thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(14.dp)),
+                        )
+                    }
+                }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
-                // Song info - isolated composable
+                // Song info - title and artist
                 NewMiniPlayerSongInfo(
                     mediaMetadata = mediaMetadata,
-                    onSurfaceColor = onSurfaceColor,
+                    onSurfaceColor = contentTextColor,
+                    subtitleColor = subtitleTextColor,
                     errorColor = errorColor,
                     modifier = Modifier.weight(1f),
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 // Cast indicator
                 if (isCasting) {
                     Icon(
                         painter = painterResource(R.drawable.cast_connected),
                         contentDescription = "Casting",
-                        tint = primaryColor,
+                        tint = SpotifyGreen,
                         modifier = Modifier.size(20.dp),
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
 
-// Subscribe button - isolated composable
-                mediaMetadata?.artists?.firstOrNull()?.id?.let { artistId ->
-                    SubscribeButton(
-                        artistId = artistId,
-                        metadata = mediaMetadata!!,
-                        primaryColor = primaryColor,
-                        outlineColor = outlineColor,
-                        onSurfaceColor = onSurfaceColor,
+                // Favorite button
+                mediaMetadata?.let {
+                    FavoriteButton(
+                        songId = it.id,
+                        errorColor = SpotifyGreen,
+                        outlineColor = heartTint,
+                        onSurfaceColor = heartTint,
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
-// Favorite button - isolated composable
-                mediaMetadata?.let { FavoriteButton(
-                    songId = it.id,
-                    errorColor = errorColor,
-                    outlineColor = outlineColor,
-                    onSurfaceColor = onSurfaceColor,
+                // Circular play/pause button matching mockup
+                SpotifyMiniPlayerPlayButton(
+                    playbackState = playbackState,
+                    isCasting = isCasting,
+                    castHandler = castHandler,
+                    playerConnection = playerConnection,
+                    listenTogetherManager = listenTogetherManager,
+                    backgroundColor = playBtnBg,
+                    iconColor = playBtnIcon,
                 )
-                }
             }
+
+            // Hairline progress bar across the top of the mini player
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(2.5.dp)
+                    .background(Color(0x14000000))
+                    .drawWithContent {
+                        drawContent()
+                        val progress = progressState.progress
+                        if (progress > 0f) {
+                            drawRect(
+                                color = SpotifyGreen,
+                                topLeft = Offset.Zero,
+                                size = Size(size.width * progress, size.height),
+                            )
+                        }
+                    },
+            )
         }
+    }
+}
+
+/**
+ * Spotify MiniPlayer Play button with Apple-style fluid press
+ */
+@Composable
+private fun SpotifyMiniPlayerPlayButton(
+    playbackState: Int,
+    isCasting: Boolean,
+    castHandler: CastConnectionHandler?,
+    playerConnection: PlayerConnection,
+    listenTogetherManager: ListenTogetherManager?,
+    backgroundColor: Color = Color(0xFF14161F),
+    iconColor: Color = Color.White,
+    modifier: Modifier = Modifier,
+) {
+    val isPlaying by playerConnection.isPlaying.collectAsState()
+    val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
+    val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
+    val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
+    val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
+    val dynamicPlayBtnBg by animateColorAsState(
+        targetValue = if (effectiveIsPlaying) SpotifyGreen else Color.White,
+        animationSpec = tween(200),
+        label = "miniPlayerPlayBtnBg",
+    )
+    val dynamicPlayBtnIcon = Color.Black
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(dynamicPlayBtnBg)
+            .spotifyPressFeedback {
+                if (isListenTogetherGuest) {
+                    playerConnection.toggleMute()
+                    return@spotifyPressFeedback
+                }
+                if (isCasting) {
+                    if (castIsPlaying) castHandler?.pause() else castHandler?.play()
+                } else if (playbackState == Player.STATE_ENDED) {
+                    playerConnection.player.seekTo(0, 0)
+                    playerConnection.player.playWhenReady = true
+                } else {
+                    playerConnection.togglePlayPause()
+                }
+            },
+    ) {
+        Icon(
+            painter = painterResource(
+                if (isListenTogetherGuest) {
+                    if (isMuted) R.drawable.volume_off else R.drawable.volume_up
+                } else if (playbackState == Player.STATE_ENDED) {
+                    R.drawable.replay
+                } else if (effectiveIsPlaying) {
+                    R.drawable.pause
+                } else {
+                    R.drawable.play
+                }
+            ),
+            contentDescription = if (effectiveIsPlaying) "Pause" else "Play",
+            tint = dynamicPlayBtnIcon,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
@@ -626,6 +756,7 @@ private fun NewMiniPlayerPlayButton(
 private fun NewMiniPlayerSongInfo(
     mediaMetadata: MediaMetadata?,
     onSurfaceColor: Color,
+    subtitleColor: Color = onSurfaceColor.copy(alpha = 0.7f),
     errorColor: Color,
     modifier: Modifier = Modifier,
 ) {
@@ -639,12 +770,13 @@ private fun NewMiniPlayerSongInfo(
             Text(
                 text = metadata.title,
                 color = onSurfaceColor,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -653,8 +785,9 @@ private fun NewMiniPlayerSongInfo(
                  if (metadata.artists.any { it.name.isNotBlank() }) {
                      Text(
                          text = metadata.artists.joinToArtistString(" ${stringResource(R.string.and)} ") { it.name },
-                         color = onSurfaceColor.copy(alpha = 0.7f),
-                        fontSize = 12.sp,
+                         color = subtitleColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                         modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
@@ -1101,21 +1234,14 @@ private fun FavoriteButton(
         contentAlignment = Alignment.Center,
         modifier =
             Modifier
-                .size(40.dp)
+                .size(36.dp)
                 .clip(CircleShape)
-                .border(
-                    width = 1.dp,
-                    color = if (isLiked) errorColor.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f),
-                    shape = CircleShape,
-                ).background(
-                    color = if (isLiked) errorColor.copy(alpha = 0.1f) else Color.Transparent,
-                    shape = CircleShape,
-                ).clickable { playerConnection.service.toggleLike() },
+                .spotifyPressFeedback { playerConnection.service.toggleLike() },
     ) {
         Icon(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
             contentDescription = null,
-            tint = if (isLiked) errorColor else onSurfaceColor.copy(alpha = 0.7f),
+            tint = if (isLiked) SpotifyGreen else onSurfaceColor.copy(alpha = 0.7f),
             modifier = Modifier.size(20.dp),
         )
     }

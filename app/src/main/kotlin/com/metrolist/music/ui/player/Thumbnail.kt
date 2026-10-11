@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -125,13 +126,13 @@ private fun calculateThumbnailDimensions(
     val effectiveSize = if (isLandscape) {
         minOf(containerWidth, containerHeight) - (horizontalPadding * 2)
     } else {
-        containerWidth - (horizontalPadding * 2)
+        minOf(containerWidth - (horizontalPadding * 2), containerHeight - 16.dp).coerceIn(240.dp, 305.dp)
     }
     return ThumbnailDimensions(
         itemWidth = containerWidth,
         containerSize = containerWidth,
         thumbnailSize = effectiveSize,
-        cornerRadius = cornerRadius * 2
+        cornerRadius = 32.dp
     )
 }
 
@@ -202,6 +203,9 @@ fun Thumbnail(
     isPlayerExpanded: () -> Boolean = { true },
     isLandscape: Boolean = false,
     isListenTogetherGuest: Boolean = false,
+    onCollapse: (() -> Unit)? = null,
+    onQueueClick: (() -> Unit)? = null,
+    showHeader: Boolean = true,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -326,19 +330,21 @@ fun Thumbnail(
             exit = fadeOut(),
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (!isLandscape) Modifier.statusBarsPadding() else Modifier),
+                .then(if (!isLandscape && showHeader) Modifier.statusBarsPadding() else Modifier),
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = if (isLandscape) Arrangement.Center else Arrangement.Top
             ) {
-                // Now Playing header - hide in landscape mode
-                if (!isLandscape) {
+                // Now Playing header - hide in landscape mode or when showHeader is false
+                if (!isLandscape && showHeader) {
                     ThumbnailHeader(
                         queueTitle = queueTitle,
                         albumTitle = mediaMetadata?.album?.title,
-                        textColor = textBackgroundColor
+                        textColor = textBackgroundColor,
+                        onCollapse = onCollapse,
+                        onQueueClick = onQueueClick,
                     )
                 }
                 
@@ -431,54 +437,68 @@ fun Thumbnail(
 }
 
 /**
- * Header component showing "Now Playing" and queue/album title.
+ * Header component showing "Now Playing" / "Lyrics" and queue/album title.
  */
 @Composable
-private fun ThumbnailHeader(
-    queueTitle: String?,
-    albumTitle: String?,
+fun ThumbnailHeader(
+    queueTitle: String? = null,
+    albumTitle: String? = null,
     textColor: Color,
-    modifier: Modifier = Modifier
+    onCollapse: (() -> Unit)? = null,
+    onQueueClick: (() -> Unit)? = null,
+    headerTitleText: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val listenTogetherRoleState = listenTogetherManager?.role?.collectAsStateWithLifecycle(initialValue = RoomRole.NONE)
     val isListenTogetherGuest = listenTogetherRoleState?.value == RoomRole.GUEST
-    Box(
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
+        // Left: Down Chevron (Collapse)
+        androidx.compose.material3.IconButton(
+            onClick = { onCollapse?.invoke() },
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.expand_more),
+                contentDescription = "Collapse",
+                tint = textColor,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
+        // Center: Title
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 48.dp)
+                .weight(1f)
+                .padding(horizontal = 8.dp)
         ) {
-            // Listen Together indicator
-            if (listenTogetherRoleState?.value != RoomRole.NONE) {
-                Text(
-                    text = if (listenTogetherRoleState?.value == RoomRole.HOST) "Hosting Listen Together" else "Listening Together",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.now_playing),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
-                )
-            }
-            val playingFrom = queueTitle ?: albumTitle
-            if (!playingFrom.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = playingFrom,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    modifier = Modifier.basicMarquee()
-                )
-            }
+            Text(
+                text = headerTitleText ?: stringResource(R.string.now_playing),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color = textColor,
+            )
+        }
+
+        // Right: Queue / Playlist Icon
+        androidx.compose.material3.IconButton(
+            onClick = { onQueueClick?.invoke() },
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.queue_music),
+                contentDescription = "Queue",
+                tint = textColor,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
@@ -556,6 +576,22 @@ private fun ThumbnailItem(
             },
         contentAlignment = Alignment.Center
     ) {
+        // Ambient backlight halo radiating behind album art
+        Box(
+            modifier = Modifier
+                .size(dimensions.thumbnailSize + 48.dp)
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.22f),
+                            Color(0x331DB954),
+                            Color.Transparent
+                        )
+                    ),
+                    shape = androidx.compose.foundation.shape.CircleShape
+                )
+        )
+
         Box(
             modifier = Modifier
                 .size(dimensions.thumbnailSize)

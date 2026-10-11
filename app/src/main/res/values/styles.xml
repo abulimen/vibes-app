@@ -1,15 +1,15 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.Metrolist" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Metrolist" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowMinWidthMinor">100%</item>
         <item name="android:windowMinWidthMajor">100%</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">#ffffff</item>
+        <item name="android:windowBackground">#0E1015</item>
         <item name="android:enforceNavigationBarContrast" tools:ignore="NewApi">false</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">#0E1015</item>
+        <item name="android:navigationBarColor">#0E1015</item>
     </style>
 
     <!-- Widget Theme with Material 3 colors fallback for API < 31 -->

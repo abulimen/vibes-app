@@ -156,5 +156,19 @@ object PageHelper {
                 ?.parseTime()
         }
 
+    fun extractPlays(
+        flexColumns: List<FlexColumn>?,
+        fixedColumns: List<FlexColumn>? = null,
+    ): String? {
+        val flexRuns = flexColumns?.flatMap { it.musicResponsiveListItemFlexColumnRenderer.text?.runs.orEmpty() }.orEmpty()
+        val fixedRuns = fixedColumns?.flatMap { it.musicResponsiveListItemFlexColumnRenderer.text?.runs.orEmpty() }.orEmpty()
+        val allRuns = flexRuns + fixedRuns
+        return allRuns.firstOrNull { run ->
+            val text = run.text.trim()
+            (text.contains("play", ignoreCase = true) || text.contains("view", ignoreCase = true)) &&
+                text.any { it.isDigit() }
+        }?.text?.trim()
+    }
+
     private fun String.isDurationText(): Boolean = matches(Regex("""\d{1,2}[:.,]\d{2}(?:[:.,]\d{2})?"""))
 }

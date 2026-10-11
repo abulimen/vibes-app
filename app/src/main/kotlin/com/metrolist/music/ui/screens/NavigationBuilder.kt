@@ -56,10 +56,7 @@ import com.metrolist.music.ui.screens.settings.SettingsScreen
 import com.metrolist.music.ui.screens.settings.StorageSettings
 import com.metrolist.music.ui.screens.settings.ThemeScreen
 import com.metrolist.music.ui.screens.settings.UpdaterScreen
-import com.metrolist.music.ui.screens.settings.integrations.DiscordSettings
-import com.metrolist.music.ui.screens.settings.integrations.IntegrationScreen
-import com.metrolist.music.ui.screens.settings.integrations.LastFMSettings
-import com.metrolist.music.ui.screens.settings.integrations.ListenTogetherSettings
+
 
 import com.metrolist.music.ui.screens.wrapped.WrappedScreen
 import com.metrolist.music.utils.rememberEnumPreference
@@ -78,8 +75,8 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(Screens.Search.route) { backStackEntry ->
-        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
         val isSystemInDarkTheme = isSystemInDarkTheme()
         val useDarkTheme =
             remember(darkTheme, isSystemInDarkTheme) {
@@ -384,20 +381,16 @@ fun NavGraphBuilder.navigationBuilder(
         BackupAndRestore(navController)
     }
 
-    composable("settings/integrations") {
-        IntegrationScreen(navController)
+    composable("spotify_import") {
+        SpotifyImportScreen(navController)
     }
 
-    composable("settings/integrations/discord") {
-        DiscordSettings(navController)
+    composable("home_section") {
+        HomeSectionScreen(navController)
     }
 
-    composable("settings/integrations/lastfm") {
-        LastFMSettings(navController)
-    }
-
-    composable(route = "settings/integrations/listen_together") {
-        ListenTogetherSettings(navController)
+    composable("onboarding") {
+        OnboardingScreen(navController)
     }
 
     composable("settings/updater") {

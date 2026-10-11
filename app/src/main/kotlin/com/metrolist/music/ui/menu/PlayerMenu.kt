@@ -97,8 +97,10 @@ import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
+import com.metrolist.music.ui.theme.SpotifyGreen
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.log2
 import kotlin.math.pow
@@ -109,6 +111,8 @@ fun PlayerMenu(
     mediaMetadata: MediaMetadata?,
     playerBottomSheetState: BottomSheetState,
     isQueueTrigger: Boolean? = false,
+    onToggleLyrics: (() -> Unit)? = null,
+    onShowSleepTimer: (() -> Unit)? = null,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -155,6 +159,26 @@ fun PlayerMenu(
 
     var showListenTogetherDialog by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    val sleepTimer = playerConnection.service.sleepTimer
+    val sleepTimerActive = remember(sleepTimer?.triggerTime, sleepTimer?.pauseWhenSongEnd) {
+        sleepTimer?.isActive ?: false
+    }
+    var sleepTimerMinutesLeft by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(sleepTimerActive) {
+        if (sleepTimerActive) {
+            while (isActive) {
+                val leftMs = if (sleepTimer?.pauseWhenSongEnd == true) {
+                    playerConnection.player.duration - playerConnection.player.currentPosition
+                } else {
+                    (sleepTimer?.triggerTime ?: 0L) - System.currentTimeMillis()
+                }
+                sleepTimerMinutesLeft = maxOf(1, ((leftMs + 59_999L) / 60_000L).toInt())
+                kotlinx.coroutines.delay(1000L)
+            }
+        }
     }
 
     val listenTogetherManager = LocalListenTogetherManager.current
@@ -314,9 +338,112 @@ fun PlayerMenu(
     ) {
         item {
             val startingRadioText = stringResource(R.string.starting_radio)
+            val downloadAction = when (download?.state) {
+                Download.STATE_COMPLETED -> {
+                    NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.offline),
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        text = stringResource(R.string.filter_downloaded),
+                        onClick = {
+                            DownloadService.sendRemoveDownload(
+                                context,
+                                ExoDownloadService::class.java,
+                                mediaMetadata.id,
+                                false,
+                            )
+                            onDismiss()
+                        },
+                    )
+                }
+                Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
+                    NewAction(
+                        icon = {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        },
+                        text = stringResource(R.string.downloading),
+                        onClick = {
+                            DownloadService.sendRemoveDownload(
+                                context,
+                                ExoDownloadService::class.java,
+                                mediaMetadata.id,
+                                false,
+                            )
+                            onDismiss()
+                        },
+                    )
+                }
+                else -> {
+                    NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.download),
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = stringResource(R.string.action_download),
+                        onClick = {
+                            downloadUtil.download(mediaMetadata)
+                            onDismiss()
+                        },
+                    )
+                }
+            }
+
             NewActionGrid(
                 actions =
                     listOfNotNull(
+                        downloadAction,
+                        onToggleLyrics?.let { toggleLyrics ->
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.lyrics),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = stringResource(R.string.lyrics),
+                                onClick = {
+                                    toggleLyrics()
+                                    onDismiss()
+                                },
+                            )
+                        },
+                        onShowSleepTimer?.let { showTimer ->
+                            val sleepTimerText = when {
+                                !sleepTimerActive -> stringResource(R.string.sleep_timer)
+                                sleepTimer?.pauseWhenSongEnd == true -> stringResource(R.string.end_of_song)
+                                else -> "${sleepTimerMinutesLeft}m left"
+                            }
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.bedtime),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint = if (sleepTimerActive) SpotifyGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = sleepTimerText,
+                                contentColor = if (sleepTimerActive) SpotifyGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                onClick = {
+                                    showTimer()
+                                    onDismiss()
+                                },
+                            )
+                        },
                         if (!isListenTogetherGuest) {
                             NewAction(
                                 icon = {
@@ -377,7 +504,7 @@ fun PlayerMenu(
                             },
                         ),
                     ),
-                columns = if (isListenTogetherGuest) 2 else 3,
+                columns = 3,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
             )
         }
@@ -655,6 +782,53 @@ fun PlayerMenu(
             Material3MenuGroup(
                 items =
                     buildList {
+                        onToggleLyrics?.let { toggleLyrics ->
+                            add(
+                                Material3MenuItemData(
+                                    title = { Text(text = stringResource(R.string.lyrics)) },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.lyrics),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    },
+                                    onClick = {
+                                        toggleLyrics()
+                                        onDismiss()
+                                    },
+                                ),
+                            )
+                        }
+                        onShowSleepTimer?.let { showTimer ->
+                            val sleepTimerText = when {
+                                !sleepTimerActive -> stringResource(R.string.sleep_timer)
+                                sleepTimer?.pauseWhenSongEnd == true -> stringResource(R.string.end_of_song)
+                                else -> "${stringResource(R.string.sleep_timer)} (${sleepTimerMinutesLeft}m left)"
+                            }
+                            add(
+                                Material3MenuItemData(
+                                    title = {
+                                        Text(
+                                            text = sleepTimerText,
+                                            color = if (sleepTimerActive) SpotifyGreen else MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.bedtime),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                            tint = if (sleepTimerActive) SpotifyGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    },
+                                    onClick = {
+                                        showTimer()
+                                        onDismiss()
+                                    },
+                                ),
+                            )
+                        }
                         add(
                             Material3MenuItemData(
                                 title = { Text(text = stringResource(R.string.details)) },

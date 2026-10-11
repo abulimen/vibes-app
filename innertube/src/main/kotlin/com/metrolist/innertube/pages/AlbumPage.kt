@@ -81,7 +81,8 @@ data class AlbumPage(
                     it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                 } != null,
                 libraryAddToken = libraryTokens.addToken,
-                libraryRemoveToken = libraryTokens.removeToken
+                libraryRemoveToken = libraryTokens.removeToken,
+                plays = PageHelper.extractPlays(renderer.flexColumns, renderer.fixedColumns),
             )
         }
     }

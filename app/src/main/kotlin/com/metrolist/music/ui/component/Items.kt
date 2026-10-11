@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -120,6 +121,7 @@ import com.metrolist.music.db.entities.Song
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.queues.LocalAlbumRadio
+import com.metrolist.music.ui.theme.SpotifyGreen
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.joinByBullet
 import com.metrolist.music.utils.joinToArtistString
@@ -159,6 +161,7 @@ fun ClickableArtistText(
     color: Color = LocalContentColor.current,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
+    onArtistClick: ((String) -> Unit)? = null,
 ) = ArtistLinksText(
     artists = remember(artists) { artists.map { ArtistLink(it.id, it.name) } },
     modifier = modifier,
@@ -166,6 +169,7 @@ fun ClickableArtistText(
     color = color,
     maxLines = maxLines,
     overflow = overflow,
+    onArtistClick = onArtistClick,
 )
 
 @JvmName("ClickableArtistTextInnerTube")
@@ -177,6 +181,7 @@ fun ClickableArtistText(
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
     color: Color = LocalContentColor.current,
+    onArtistClick: ((String) -> Unit)? = null,
 ) = ArtistLinksText(
     artists = remember(artists) { artists.map { ArtistLink(it.id, it.name) } },
     modifier = modifier,
@@ -184,6 +189,7 @@ fun ClickableArtistText(
     color = color,
     maxLines = maxLines,
     overflow = overflow,
+    onArtistClick = onArtistClick,
 )
 
 @JvmName("ClickableArtistTextMedia")
@@ -195,6 +201,7 @@ fun ClickableArtistText(
     color: Color = LocalContentColor.current,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
+    onArtistClick: ((String) -> Unit)? = null,
 ) = ArtistLinksText(
     artists = remember(artists) { artists.map { ArtistLink(it.id, it.name) } },
     modifier = modifier,
@@ -202,6 +209,7 @@ fun ClickableArtistText(
     color = color,
     maxLines = maxLines,
     overflow = overflow,
+    onArtistClick = onArtistClick,
 )
 
 @Composable
@@ -212,6 +220,7 @@ private fun ArtistLinksText(
     color: Color,
     maxLines: Int,
     overflow: TextOverflow,
+    onArtistClick: ((String) -> Unit)? = null,
 ) {
     val navController = LocalNavController.current
     val andString = stringResource(R.string.and)
@@ -225,6 +234,7 @@ private fun ArtistLinksText(
                             tag = artist.id,
                             styles = TextLinkStyles(SpanStyle(color = color)),
                         ) {
+                            onArtistClick?.invoke(artist.id)
                             navController.navigate("artist/${artist.id}")
                         },
                     ) {
@@ -262,21 +272,25 @@ inline fun ListItem(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = if (isActive) {
-            modifier // playing highlight
+            modifier // playing highlight pill
                 .height(ListItemHeight)
-                .padding(horizontal = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .clip(RoundedCornerShape(14.dp))
                 .background(
-                    color = // selected active
-                        if (isSelected == true) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                        else MaterialTheme.colorScheme.secondaryContainer
+                    color = if (isSelected == true) SpotifyGreen.copy(alpha = 0.35f)
+                    else Color(0xFF1E222D)
+                )
+                .border(
+                    width = 1.dp,
+                    color = Color(0x331DB954),
+                    shape = RoundedCornerShape(14.dp)
                 )
         } else if (isSelected == true) {
             modifier // inactive selected
                 .height(ListItemHeight)
-                .padding(horizontal = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(color = MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.4f))
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(color = Color(0xFF1E222D).copy(alpha = 0.7f))
         } else {
             modifier // default
                 .height(ListItemHeight)
@@ -318,7 +332,8 @@ inline fun ListItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = if (isActive) FontWeight.Bold else FontWeight.SemiBold,
+                color = if (isActive) SpotifyGreen else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1169,6 +1184,7 @@ fun YouTubeListItem(
                         item.artists.joinToArtistString(artistSeparator) {
                             ArtistNameAliases.resolve(artistNameAliases, it.id, it.name)
                         },
+                        item.plays,
                         makeTimeString(item.duration?.times(1000L)),
                     )
 
@@ -1509,8 +1525,19 @@ fun ItemThumbnail(
                 exit = shrinkOut(shrinkTowards = Alignment.Center) + fadeOut()
             ) {
                 Text(
-                    text = albumIndex.toString(),
-                    style = MaterialTheme.typography.labelLarge
+                    text = String.format("%02d", albumIndex),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = Color(0xFF8A90A0),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            }
+            if (isActive) {
+                PlayingIndicator(
+                    color = SpotifyGreen,
+                    modifier = Modifier
+                        .height(18.dp)
+                        .width(18.dp)
                 )
             }
         }
@@ -1531,20 +1558,19 @@ fun ItemThumbnail(
             }
         }
 
-        PlayingIndicatorBox(
-            isActive = isActive,
-            playWhenReady = isPlaying,
-            color = if (albumIndex != null) MaterialTheme.colorScheme.onBackground else Color.White,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    color = if (albumIndex != null)
-                        Color.Transparent
-                    else
-                        Color.Black.copy(alpha = ActiveBoxAlpha),
-                    shape = shape
-                )
-        )
+        if (albumIndex == null) {
+            PlayingIndicatorBox(
+                isActive = isActive,
+                playWhenReady = isPlaying,
+                color = Color.White,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        color = Color.Black.copy(alpha = ActiveBoxAlpha),
+                        shape = shape
+                    )
+            )
+        }
     }
 }
 

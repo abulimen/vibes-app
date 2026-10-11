@@ -31,6 +31,10 @@ import com.metrolist.innertube.models.getContinuation
 import com.metrolist.innertube.models.getItems
 import com.metrolist.innertube.models.oddElements
 import com.metrolist.innertube.models.splitBySeparator
+import com.metrolist.innertube.models.YouTubeSongEngagement
+import com.metrolist.innertube.models.CommentItem
+import org.json.JSONObject
+import org.json.JSONArray
 import com.metrolist.innertube.utils.parseTime
 import com.metrolist.innertube.models.response.AccountMenuResponse
 import com.metrolist.innertube.models.response.BrowseResponse
@@ -2048,7 +2052,7 @@ object YouTube {
     private fun convertToChartItem(renderer: MusicResponsiveListItemRenderer): YTItem? {
         return try {
             when {
-                renderer.flexColumns.size >= 3 && renderer.videoId != null -> {
+                renderer.flexColumns.size >= 2 && renderer.videoId != null -> {
                     val firstColumn =
                         renderer.flexColumns
                             .getOrNull(0)
@@ -2887,6 +2891,357 @@ object YouTube {
             cpn = cpn,
         )
     }
+
+    suspend fun songEngagement(videoId: String): Result<YouTubeSongEngagement> =
+        runCatching {
+            val responseText = innerTube.next(
+                client = WEB,
+                videoId = videoId,
+                playlistId = null,
+                playlistSetVideoId = null,
+                index = null,
+                params = null,
+                continuation = null,
+            ).bodyAsText()
+
+            val json = JSONObject(responseText)
+
+            // 1. Extract Like Count
+            var likeCount: String? = null
+            fun findLikes(obj: Any?) {
+                if (likeCount != null || obj == null) return
+                if (obj is JSONObject) {
+                    if (obj.has("likeButtonViewModel")) {
+                        val lb = obj.optJSONObject("likeButtonViewModel")
+                        val defBtn = lb?.optJSONObject("likeButtonViewModel")
+                            ?.optJSONObject("toggleButtonViewModel")
+                            ?.optJSONObject("toggleButtonViewModel")
+                            ?.optJSONObject("defaultButtonViewModel")
+                            ?.optJSONObject("buttonViewModel")
+                        val title = defBtn?.optString("title")
+                        if (!title.isNullOrEmpty()) {
+                            likeCount = title
+                            return
+                        }
+                    }
+                    val keys = obj.keys()
+                    while (keys.hasNext()) {
+                        findLikes(obj.opt(keys.next()))
+                    }
+                } else if (obj is JSONArray) {
+                    for (i in 0 until obj.length()) {
+                        findLikes(obj.opt(i))
+                    }
+                }
+            }
+            findLikes(json)
+
+            // 2. Extract Comment Count and Token
+            var commentCount: String? = null
+            var commentToken: String? = null
+
+            val engagementPanels = json.optJSONArray("engagementPanels")
+            if (engagementPanels != null) {
+                for (i in 0 until engagementPanels.length()) {
+                    val panel = engagementPanels.optJSONObject(i)?.optJSONObject("engagementPanelSectionListRenderer") ?: continue
+                    val header = panel.optJSONObject("header")?.optJSONObject("engagementPanelTitleHeaderRenderer")
+                    val titleRuns = header?.optJSONObject("title")?.optJSONArray("runs")
+                    val isComments = titleRuns?.optJSONObject(0)?.optString("text")?.contains("Comment", ignoreCase = true) == true
+                    if (isComments) {
+                        val countRuns = header.optJSONObject("contextualInfo")?.optJSONArray("runs")
+                        commentCount = countRuns?.optJSONObject(0)?.optString("text")
+
+                        val subMenuItems = header.optJSONObject("menu")
+                            ?.optJSONObject("sortFilterSubMenuRenderer")
+                            ?.optJSONArray("subMenuItems")
+                        if (subMenuItems != null && subMenuItems.length() > 0) {
+                            commentToken = subMenuItems.optJSONObject(0)
+                                ?.optJSONObject("serviceEndpoint")
+                                ?.optJSONObject("continuationCommand")
+                                ?.optString("token")
+                        }
+                    }
+                }
+            }
+
+            // Fallback for commentToken if not found in engagementPanels header
+            if (commentToken == null) {
+                fun findToken(obj: Any?) {
+                    if (commentToken != null || obj == null) return
+                    if (obj is JSONObject) {
+                        val cmd = obj.optJSONObject("continuationCommand")
+                        if (cmd != null && cmd.has("token")) {
+                            val tok = cmd.optString("token")
+                            if (tok.contains("comment", ignoreCase = true) || obj.toString().contains("comment", ignoreCase = true)) {
+                                commentToken = tok
+                                return
+                            }
+                        }
+                        val keys = obj.keys()
+                        while (keys.hasNext()) {
+                            findToken(obj.opt(keys.next()))
+                        }
+                    } else if (obj is JSONArray) {
+                        for (i in 0 until obj.length()) {
+                            findToken(obj.opt(i))
+                        }
+                    }
+                }
+                findToken(json)
+            }
+
+            YouTubeSongEngagement(
+                likeCount = likeCount,
+                commentCount = commentCount,
+                commentsToken = commentToken,
+            )
+        }
+
+    suspend fun songComments(token: String): Result<List<CommentItem>> =
+        runCatching {
+            val responseText = innerTube.next(
+                client = WEB,
+                videoId = null,
+                playlistId = null,
+                playlistSetVideoId = null,
+                index = null,
+                params = null,
+                continuation = token,
+            ).bodyAsText()
+
+            val json = JSONObject(responseText)
+            val replyMap = mutableMapOf<String, Pair<String?, String?>>()
+            val actionMap = mutableMapOf<String, Triple<Boolean, String?, String?>>()
+
+            val endpoints = json.optJSONArray("onResponseReceivedEndpoints")
+            if (endpoints != null) {
+                for (i in 0 until endpoints.length()) {
+                    val ep = endpoints.optJSONObject(i) ?: continue
+                    val cmd = ep.optJSONObject("reloadContinuationItemsCommand")
+                        ?: ep.optJSONObject("appendContinuationItemsAction") ?: continue
+                    val items = cmd.optJSONArray("continuationItems") ?: continue
+                    for (j in 0 until items.length()) {
+                        val item = items.optJSONObject(j) ?: continue
+                        val th = item.optJSONObject("commentThreadRenderer") ?: continue
+                        val vm = th.optJSONObject("commentViewModel")?.optJSONObject("commentViewModel")
+                        val commentKey = vm?.optString("commentKey").orEmpty()
+                        val repliesObj = th.optJSONObject("replies")?.optJSONObject("commentRepliesRenderer")
+                        val viewRepliesText = repliesObj?.optJSONObject("viewReplies")
+                            ?.optJSONObject("buttonRenderer")
+                            ?.optJSONObject("text")
+                            ?.optJSONArray("runs")
+                            ?.optJSONObject(0)
+                            ?.optString("text")
+                        val contentsArr = repliesObj?.optJSONArray("contents")
+                        val replyToken = contentsArr?.optJSONObject(0)
+                            ?.optJSONObject("continuationItemRenderer")
+                            ?.optJSONObject("continuationEndpoint")
+                            ?.optJSONObject("continuationCommand")
+                            ?.optString("token")
+
+                        if (commentKey.isNotEmpty() && replyToken != null) {
+                            replyMap[commentKey] = Pair(viewRepliesText, replyToken)
+                        }
+
+                        val tb = vm?.optJSONObject("toolbar")
+                        val likeBtn = tb?.optJSONObject("likeButton")?.optJSONObject("toggleButtonViewModel")?.optJSONObject("toggleButtonViewModel")
+                        val vmIsLiked = likeBtn?.optBoolean("isToggled") ?: false
+                        val vmLikeAction = likeBtn?.optJSONObject("defaultServiceEndpoint")
+                            ?.optJSONObject("performCommentActionEndpoint")?.optString("action")?.takeIf { it.isNotBlank() }
+                        val vmUnlikeAction = likeBtn?.optJSONObject("toggledServiceEndpoint")
+                            ?.optJSONObject("performCommentActionEndpoint")?.optString("action")?.takeIf { it.isNotBlank() }
+                        if (commentKey.isNotEmpty() && (vmLikeAction != null || vmUnlikeAction != null || vmIsLiked)) {
+                            actionMap[commentKey] = Triple(vmIsLiked, vmLikeAction, vmUnlikeAction)
+                        }
+                    }
+                }
+            }
+
+            val comments = mutableListOf<CommentItem>()
+            val mutations = json.optJSONObject("frameworkUpdates")
+                ?.optJSONObject("entityBatchUpdate")
+                ?.optJSONArray("mutations")
+
+            if (mutations != null) {
+                for (i in 0 until mutations.length()) {
+                    val mutation = mutations.optJSONObject(i) ?: continue
+                    val entityKey = mutation.optString("entityKey")
+                    val payload = mutation.optJSONObject("payload")?.optJSONObject("commentEntityPayload") ?: continue
+                    val authorObj = payload.optJSONObject("author")
+                    val authorName = authorObj?.optString("displayName").orEmpty()
+                    val authorAvatar = authorObj?.optString("avatarThumbnailUrl")
+                    val content = payload.optJSONObject("properties")?.optJSONObject("content")?.optString("content").orEmpty()
+                    val publishedTime = payload.optJSONObject("properties")?.optString("publishedTime")
+                    val commentId = payload.optJSONObject("properties")?.optString("commentId") ?: entityKey
+
+                    val tb = payload.optJSONObject("toolbar")
+                    val likeState = tb?.optString("likeState").orEmpty()
+                    val payloadIsLiked = likeState.contains("LIKED", ignoreCase = true) && !likeState.contains("NOT_LIKED", ignoreCase = true)
+                    val payloadLikeAction = (tb?.optJSONObject("likeCommand")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action")
+                        ?: tb?.optJSONObject("likeAction")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action"))?.takeIf { it.isNotBlank() }
+                    val payloadUnlikeAction = (tb?.optJSONObject("unlikeCommand")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action")
+                        ?: tb?.optJSONObject("unlikeAction")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action"))?.takeIf { it.isNotBlank() }
+
+                    val vmActions = actionMap[entityKey] ?: actionMap[commentId]
+                    val isLiked = vmActions?.first ?: payloadIsLiked
+                    val likeAction = vmActions?.second ?: payloadLikeAction
+                    val unlikeAction = vmActions?.third ?: payloadUnlikeAction
+                    val likeCount = if (isLiked) (tb?.optString("likeCountLiked") ?: tb?.optString("likeCountNotliked"))
+                        else (tb?.optString("likeCountNotliked") ?: tb?.optString("likeCountLiked"))
+
+                    val replyInfo = replyMap[entityKey]
+
+                    if (authorName.isNotEmpty() && content.isNotEmpty()) {
+                        comments.add(
+                            CommentItem(
+                                id = commentId,
+                                authorName = authorName,
+                                authorAvatar = authorAvatar,
+                                content = content,
+                                publishedTime = publishedTime,
+                                likeCount = likeCount,
+                                isLiked = isLiked,
+                                likeAction = likeAction,
+                                unlikeAction = unlikeAction,
+                                replyCount = replyInfo?.first,
+                                replyToken = replyInfo?.second,
+                            )
+                        )
+                    }
+                }
+            }
+            comments
+        }
+
+    suspend fun commentReplies(token: String): Result<List<CommentItem>> =
+        runCatching {
+            val responseText = innerTube.next(
+                client = WEB,
+                videoId = null,
+                playlistId = null,
+                playlistSetVideoId = null,
+                index = null,
+                params = null,
+                continuation = token,
+            ).bodyAsText()
+
+            val json = JSONObject(responseText)
+            val subReplyMap = mutableMapOf<String, Pair<String?, String?>>()
+            val actionMap = mutableMapOf<String, Triple<Boolean, String?, String?>>()
+
+            val endpoints = json.optJSONArray("onResponseReceivedEndpoints")
+            if (endpoints != null) {
+                for (i in 0 until endpoints.length()) {
+                    val ep = endpoints.optJSONObject(i) ?: continue
+                    val cmd = ep.optJSONObject("appendContinuationItemsAction")
+                        ?: ep.optJSONObject("reloadContinuationItemsCommand") ?: continue
+                    val items = cmd.optJSONArray("continuationItems") ?: continue
+                    for (j in 0 until items.length()) {
+                        val item = items.optJSONObject(j) ?: continue
+                        val th = item.optJSONObject("commentThreadRenderer")
+                        val cr = item.optJSONObject("commentRenderer")
+                        val vm = item.optJSONObject("commentViewModel")?.optJSONObject("commentViewModel")
+                        val commentKey = vm?.optString("commentKey").orEmpty()
+                        val repliesObj = th?.optJSONObject("replies")?.optJSONObject("commentRepliesRenderer")
+                            ?: cr?.optJSONObject("replies")?.optJSONObject("commentRepliesRenderer")
+                        val viewRepliesText = repliesObj?.optJSONObject("viewReplies")
+                            ?.optJSONObject("buttonRenderer")
+                            ?.optJSONObject("text")
+                            ?.optJSONArray("runs")
+                            ?.optJSONObject(0)
+                            ?.optString("text")
+                        val contentsArr = repliesObj?.optJSONArray("contents")
+                        val subReplyToken = contentsArr?.optJSONObject(0)
+                            ?.optJSONObject("continuationItemRenderer")
+                            ?.optJSONObject("continuationEndpoint")
+                            ?.optJSONObject("continuationCommand")
+                            ?.optString("token")
+                        if (commentKey.isNotEmpty() && subReplyToken != null) {
+                            subReplyMap[commentKey] = Pair(viewRepliesText, subReplyToken)
+                        }
+
+                        val vmObj = vm ?: th?.optJSONObject("commentViewModel")?.optJSONObject("commentViewModel")
+                            ?: cr?.optJSONObject("commentViewModel")?.optJSONObject("commentViewModel")
+                        val tb = vmObj?.optJSONObject("toolbar")
+                        val likeBtn = tb?.optJSONObject("likeButton")?.optJSONObject("toggleButtonViewModel")?.optJSONObject("toggleButtonViewModel")
+                        val vmIsLiked = likeBtn?.optBoolean("isToggled") ?: false
+                        val vmLikeAction = likeBtn?.optJSONObject("defaultServiceEndpoint")
+                            ?.optJSONObject("performCommentActionEndpoint")?.optString("action")?.takeIf { it.isNotBlank() }
+                        val vmUnlikeAction = likeBtn?.optJSONObject("toggledServiceEndpoint")
+                            ?.optJSONObject("performCommentActionEndpoint")?.optString("action")?.takeIf { it.isNotBlank() }
+                        if (commentKey.isNotEmpty() && (vmLikeAction != null || vmUnlikeAction != null || vmIsLiked)) {
+                            actionMap[commentKey] = Triple(vmIsLiked, vmLikeAction, vmUnlikeAction)
+                        }
+                    }
+                }
+            }
+
+            val replies = mutableListOf<CommentItem>()
+            val mutations = json.optJSONObject("frameworkUpdates")
+                ?.optJSONObject("entityBatchUpdate")
+                ?.optJSONArray("mutations")
+
+            if (mutations != null) {
+                for (i in 0 until mutations.length()) {
+                    val mutation = mutations.optJSONObject(i) ?: continue
+                    val entityKey = mutation.optString("entityKey")
+                    val payload = mutation.optJSONObject("payload")?.optJSONObject("commentEntityPayload") ?: continue
+                    val authorObj = payload.optJSONObject("author")
+                    val authorName = authorObj?.optString("displayName").orEmpty()
+                    val authorAvatar = authorObj?.optString("avatarThumbnailUrl")
+                    val content = payload.optJSONObject("properties")?.optJSONObject("content")?.optString("content").orEmpty()
+                    val publishedTime = payload.optJSONObject("properties")?.optString("publishedTime")
+                    val commentId = payload.optJSONObject("properties")?.optString("commentId") ?: entityKey
+
+                    val tb = payload.optJSONObject("toolbar")
+                    val likeState = tb?.optString("likeState").orEmpty()
+                    val payloadIsLiked = likeState.contains("LIKED", ignoreCase = true) && !likeState.contains("NOT_LIKED", ignoreCase = true)
+                    val payloadLikeAction = (tb?.optJSONObject("likeCommand")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action")
+                        ?: tb?.optJSONObject("likeAction")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action"))?.takeIf { it.isNotBlank() }
+                    val payloadUnlikeAction = (tb?.optJSONObject("unlikeCommand")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action")
+                        ?: tb?.optJSONObject("unlikeAction")
+                        ?.optJSONObject("performCommentActionEndpoint")?.optString("action"))?.takeIf { it.isNotBlank() }
+
+                    val vmActions = actionMap[entityKey] ?: actionMap[commentId]
+                    val isLiked = vmActions?.first ?: payloadIsLiked
+                    val likeAction = vmActions?.second ?: payloadLikeAction
+                    val unlikeAction = vmActions?.third ?: payloadUnlikeAction
+                    val likeCount = if (isLiked) (tb?.optString("likeCountLiked") ?: tb?.optString("likeCountNotliked"))
+                        else (tb?.optString("likeCountNotliked") ?: tb?.optString("likeCountLiked"))
+
+                    val subReplyInfo = subReplyMap[entityKey]
+
+                    if (authorName.isNotEmpty() && content.isNotEmpty()) {
+                        replies.add(
+                            CommentItem(
+                                id = commentId,
+                                authorName = authorName,
+                                authorAvatar = authorAvatar,
+                                content = content,
+                                publishedTime = publishedTime,
+                                likeCount = likeCount,
+                                isLiked = isLiked,
+                                likeAction = likeAction,
+                                unlikeAction = unlikeAction,
+                                replyCount = subReplyInfo?.first,
+                                replyToken = subReplyInfo?.second,
+                            )
+                        )
+                    }
+                }
+            }
+            replies
+        }
+
+    suspend fun performCommentAction(action: String): Result<Unit> =
+        innerTube.performCommentAction(action)
 
     suspend fun next(
         endpoint: WatchEndpoint,
