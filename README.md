@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="fastlane/metadata/android/en-US/images/icon.png" alt="Vibes app icon" width="160" />
+<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/vibes-icon.svg" alt="Vibes app icon" width="160" />
 
 # Vibes
 
@@ -20,6 +20,17 @@
 - Library management, local playlists, and Spotify playlist import via TuneMyMusic
 - Equalizer, audio normalization, tempo and pitch controls, and crossfade
 - Widgets, dynamic themes, listen-together, Last.fm, and Discord Rich Presence
+
+## See Vibes
+
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-home.png" alt="Vibes home screen" width="23%" />
+<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-library.png" alt="Vibes library screen" width="23%" />
+<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-player.png" alt="Vibes player screen" width="23%" />
+<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-video.png" alt="Vibes video screen" width="23%" />
+
+</div>
 
 ## Download
 
