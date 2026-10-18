@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/vibes-icon.svg" alt="Vibes app icon" width="160" />
+<img src="assets/readme/vibes-icon.svg" alt="Vibes app icon" width="160" />
 
 # Vibes
 
@@ -25,10 +25,10 @@
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-home.png" alt="Vibes home screen" width="23%" />
-<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-library.png" alt="Vibes library screen" width="23%" />
-<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-player.png" alt="Vibes player screen" width="23%" />
-<img src="https://raw.githubusercontent.com/abulimen/vibes-website/main/public/screen-video.png" alt="Vibes video screen" width="23%" />
+<img src="assets/readme/screen-home.png" alt="Vibes home screen" width="23%" />
+<img src="assets/readme/screen-library.png" alt="Vibes library screen" width="23%" />
+<img src="assets/readme/screen-player.png" alt="Vibes player screen" width="23%" />
+<img src="assets/readme/screen-video.png" alt="Vibes video screen" width="23%" />
 
 </div>
 
