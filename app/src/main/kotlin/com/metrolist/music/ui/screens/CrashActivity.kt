@@ -41,6 +41,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.core.content.FileProvider
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.MetrolistTheme
@@ -71,38 +74,12 @@ class CrashActivity : ComponentActivity() {
     }
     
     private fun shareCrashLog(crashLog: String) {
-        try {
-            // Create crash log file
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-            val fileName = "metrolist_crash_$timestamp.txt"
-            val crashFile = File(cacheDir, fileName)
-            crashFile.writeText(crashLog)
-            
-            // Get URI using FileProvider
-            val uri = FileProvider.getUriForFile(
-                this,
-                "${packageName}.FileProvider",
-                crashFile
-            )
-            
-            // Create share intent
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crash_report_subject))
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            
-            startActivity(Intent.createChooser(shareIntent, getString(R.string.crash_share_title)))
-        } catch (e: Exception) {
-            // Fallback to simple text share if file sharing fails
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, crashLog)
-                putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crash_report_subject))
-            }
-            startActivity(Intent.createChooser(shareIntent, getString(R.string.crash_share_title)))
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, crashLog)
+            putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crash_report_subject))
         }
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.crash_share_title)))
     }
 }
 
@@ -114,6 +91,7 @@ fun CrashScreen(
     onShare: () -> Unit
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     
     Scaffold(
         topBar = {
@@ -125,6 +103,15 @@ fun CrashScreen(
                     ) 
                 },
                 actions = {
+                    IconButton(onClick = {
+                        clipboardManager.setText(AnnotatedString(crashLog))
+                        Toast.makeText(context, context.getString(R.string.copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.content_copy),
+                            contentDescription = stringResource(R.string.copy)
+                        )
+                    }
                     IconButton(onClick = onClose) {
                         Icon(
                             painter = painterResource(R.drawable.close),

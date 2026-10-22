@@ -99,13 +99,18 @@ class App :
         // تهيئة إعدادات التطبيق عند الإقلاع
         applicationScope.launch {
             // Apply settings, including proxy configuration, before building extraction transport.
-            initializeSettings()
+            runCatching {
+                initializeSettings()
+            }.onFailure { e ->
+                Timber.e(e, "Failed to initialize settings during startup")
+                reportException(e)
+            }
 
             // Warm player config, cipher, and optional PO-token state off the first-play path.
             launch(Dispatchers.IO) {
                 delay(2500)
                 var waitedMs = 0
-                while (YouTube.visitorData == null && waitedMs < 12_000) {
+                while (runCatching { YouTube.visitorData }.getOrNull() == null && waitedMs < 12_000) {
                     delay(500)
                     waitedMs += 500
                 }
